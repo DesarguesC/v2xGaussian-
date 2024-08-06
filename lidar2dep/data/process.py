@@ -74,7 +74,8 @@ def pre_read(rgb_file_path, pcd_file_path, camera_file_path, lidar_lines=64, ret
         rgb = TF.to_tensor(rgb_image)
         rgb = TF.normalize(rgb, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225), inplace=True)
         depth = TF.to_tensor(np.array(sampled_depth))
-        return {'rgb': rgb, 'depth': depth, 'K': torch.Tensor(K)}
+        return {'rgb': rgb, 'dep': depth, 'K': torch.Tensor(K)}
+
 
 
 
