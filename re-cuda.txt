@@ -1,0 +1,6 @@
+./diff-gaussian-rasterization
+./simple-knn
+# git+https://github.com/NVlabs/nvdiffrast/
+# git+https://github.com/ashawkey/kiuikit
+# git+https://github.com/bytedance/MVDream
+# git+https://github.com/bytedance/ImageDream/#subdirectory=extern/ImageDream

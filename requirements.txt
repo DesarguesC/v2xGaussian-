@@ -1,0 +1,46 @@
+tqdm
+rich
+ninja
+numpy
+Pillow==9.4.0
+pytorch_lightning==1.5.9
+pandas
+scipy
+scikit-learn
+matplotlib
+opencv-python
+imageio
+imageio-ffmpeg
+omegaconf
+einops
+whisper
+plyfile
+pygltflib
+# for gui
+dearpygui
+# for stable-diffusion
+huggingface_hub
+diffusers
+accelerate
+transformers
+# for dmtet and mesh export
+xatlas
+trimesh
+PyMCubes
+pymeshlab
+rembg[gpu,cli]
+# gradio demo
+gradio
+nltk
+easydict
+thop
+tensorboardX
+h5py
+
+albumentations==0.4.3
+webdataset==0.2.35
+mmcv-full==1.4.4
+mmsegmentation==0.22.1
+
+# TODO: srun pip install mmcv-full==1.4.4 mmsegmentation==0.22.1 -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
