@@ -1,0 +1,3 @@
+DAIR-V2X -> ./cooperative/data_info_new.json
+key['infrastructure_pointcloud_path'] -> infrastructure-side/velodyn -> xx-i.pcd
+key['vehicle_pointcloud_path'] -> vehicle-side/velodyne -> xx-v.pcd

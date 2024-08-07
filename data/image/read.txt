@@ -1,0 +1,2 @@
+DAIR-V2X -> ./cooperative/data_info_new.json
+key['infrastructure_image_path'] -> ./infrastructure-side/image
