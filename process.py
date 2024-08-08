@@ -2,7 +2,7 @@ import os, glob, cv2, argparse, torch, rembg, sys, pdb
 import numpy as np
 from PIL import Image
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
-from seem.masks import FG_remove, preload_seem_detector, preload_lama_remover
+from seem.masks import FG_remove, FG_remove_All, preload_seem_detector, preload_lama_remover
 
 if __name__ == '__main__':
 
@@ -66,9 +66,10 @@ if __name__ == '__main__':
         image = Image.open(file)
         # TODO: use seem to remove foreground
         print(f'[INFO] background removal...')
-        carved_image, mask = FG_remove(opt = opt, img = image, preloaded_seem_detector=preloaded_seem_detector, preloaded_lama_dict=preloaded_lama_dict)
+        res, mask, carved_image = FG_remove_All(opt = opt, img = image, preloaded_seem_detector=preloaded_seem_detector, preloaded_lama_dict=preloaded_lama_dict)
 
         # TODO: save intermediate results
+        cv2.imwrite(os.path.join(opt.results, 'remove/m.jpg'), cv2.cvtColor(np.uint8(res), cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, 'remove/r.jpg'), cv2.cvtColor(np.uint8(carved_image), cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, 'remove/m.jpg'), cv2.cvtColor(np.uint8(mask), cv2.COLOR_RGB2BGR))
 

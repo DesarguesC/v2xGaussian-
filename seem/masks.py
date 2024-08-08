@@ -5,6 +5,7 @@ from PIL import Image
 from omegaconf import OmegaConf
 from seem.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog
+from einops import rearrange, repeat
 
 from .modeling.language.loss import vl_similarity
 from .utils.constants import COCO_PANOPTIC_CLASSES
@@ -204,10 +205,59 @@ def FG_remove(opt, img, reftxt = 'Cars', preloaded_seem_detector = None, preload
 
     seg_mask = np.concatenate([np.expand_dims(tar, axis=0) for tar in target_mask_list], axis=0)
     print(f'seg_mask = {seg_mask.shape}')
+    seg_mask = rearrange(repeat(seg_mask, '1 h w -> c h w', c = 3), 'c h w -> h w c')
 
+    return Image.fromarray(res), seg_mask, img_inpainted
 
-    return Image.fromarray(res), seg_mask
+def FG_remove_All(opt, img, reftxt = 'Cars', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 15):
+    # img: PIL.Image
+    uu = preload_seem_detector(opt, preloaded_seem_detector)
+    seem_model, seem_cfg = uu['seem_model'], uu['cfg']
+    # sys.exit(-1)
+    preloaded_lama_dict = preload_lama_remover(opt, preloaded_lama_dict)
 
+    width, height = img.size
+    img_ori = np.asarray(img).copy()
+    img = torch.from_numpy(img_ori).permute(2, 0, 1).cuda()
+    # print(f'img.size = {img.size}')
+    visual = Visualizer(img_ori, metadata=metadata)
+
+    data = {"image": img, "height": height, "width": width}
+    data['text'] = reftxt # flexible targets
+    batch_inputs = [data]
+
+    # predict
+    seem_model.model.metadata = metadata
+    results, mask_box_dict = seem_model.model.evaluate_all(batch_inputs)
+    mask_all, category, masks_list = results[-1]['panoptic_seg']
+
+    assert len(category) == len(masks_list), f'len(category) = {len(category)}, len(masks_list) = {len(masks_list)}'
+    object_mask_list = [{
+        'name': metadata.stuff_classes[category[i]['category_id']],
+        'mask': masks_list[i]
+    } for i in range(len(category))]
+
+    sure_mask_list = [
+        (x['mask'] * (255. if np.max(x['mask']) <= 1. else 1.)) for x in object_mask_list if reftxt.lower() in x['name'].lower()
+    ]
+    for i in range(len(sure_mask_list)):
+        print(f'mask-i.shape = {sure_mask_list[i].shape}')
+    mm = sure_mask_list[0]
+    print(type(mm))
+
+    mask_merged, comp = np.zeros_like(mm), np.ones_like(mm) * 255
+    for i in range(len(sure_mask_list)):
+        mask_merged = mask_merged[min(comp, mask_merged + sure_mask_list[i])]
+    mask_merged = dilate_mask(mask_merged, dilate_kernel_size)
+
+    demo = visual.draw_panoptic_seg(mask_all.cpu(), category)  # rgb Image
+    res = demo.get_image()
+
+    img_inpainted = inpaint_img_with_lama(
+        img=img_ori, mask=mask_merged, mod=8, device=opt.device, preloaded_lama_remover=preloaded_lama_dict
+    )  # -> np.array([H W 3]) | cv2.imwrite: cv2.cvtColor(np.uint8(img_inpainted), cv2.COLOR_RGB2BGR)
+
+    return Image.fromarray(res), mask_merged, img_inpainted
 
 
 
