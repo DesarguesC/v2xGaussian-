@@ -146,7 +146,7 @@ vehicle_prompt = "You will receive the name of an object, and you will need to m
                  "<Question> Bus <Answer> yes\n<Question> Truck <Answer> yes\n"\
                  "<Question> road <Answer> no\m<Question> traffic Lights <Answer> no\n"
 
-def get_vehicle_agent(engine='claude-'):
+def get_vehicle_agent(engine='claude-3-haiku-20240307'):
     import pandas as pd
     api_key = str(list(pd.read_csv('./key.csv')['anthropic'])[0])
     return Claude(engine = engine, api_key = api_key, system_prompt=vehicle_prompt)

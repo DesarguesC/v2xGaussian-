@@ -4,6 +4,14 @@ from PIL import Image
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
 from seem.masks import FG_remove, FG_remove_All, preload_seem_detector, preload_lama_remover
 
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -18,6 +26,9 @@ if __name__ == '__main__':
     # LaMa
     parser.add_argument('--lama_ckpt', type=str, default='../Tools/LaMa/', help='actually path to lama ckpt base folder, ckpt specified in config files')
     parser.add_argument('--lama_cfg', type=str, default='./configs/lama_default.yaml', help='path to lama inpainting config path')
+    # LLM
+    parser.add_argument('--use_llm', type=str2bool, default=False, help='whether to use Claude or not')
+
 
     #Outputs
     parser.add_argument('--results', type=str, default='../v2x-outputs/pre-process/', help='result direction')
@@ -66,7 +77,11 @@ if __name__ == '__main__':
         image = Image.open(file)
         # TODO: use seem to remove foreground
         print(f'[INFO] background removal...')
-        res, mask, carved_image = FG_remove_All(opt = opt, img = image, preloaded_seem_detector=preloaded_seem_detector, preloaded_lama_dict=preloaded_lama_dict)
+        res, mask, carved_image = FG_remove_All(
+            opt = opt, img = image,
+            preloaded_seem_detector=preloaded_seem_detector, preloaded_lama_dict=preloaded_lama_dict,
+            use_llm=opt.use_llm
+        )
 
         # TODO: save intermediate results
         cv2.imwrite(os.path.join(opt.results, 'remove/mask.jpg'), cv2.cvtColor(np.uint8(mask), cv2.COLOR_RGB2BGR))

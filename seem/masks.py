@@ -170,7 +170,7 @@ def process_seem_outputs(temperature, results, extra):
     return pred_masks, t_emb, v_emb, pred_masks_pos
 
 
-def FG_remove(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 15):
+def FG_remove(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 30):
     # img: PIL.Image
     uu = preload_seem_detector(opt, preloaded_seem_detector)
     seem_model, seem_cfg = uu['seem_model'], uu['cfg']
@@ -211,7 +211,11 @@ def FG_remove(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloade
 
     return Image.fromarray(res), seg_mask, img_inpainted
 
-def FG_remove_All(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 10, use_llm=False):
+def FG_remove_All(
+        opt, img, reftxt = 'Car',
+        preloaded_seem_detector = None, preloaded_lama_dict = None,
+        dilate_kernel_size = 30, use_llm=False # dilate with kernel=30 the best
+    ):
     # img: PIL.Image
     uu = preload_seem_detector(opt, preloaded_seem_detector)
     seem_model, seem_cfg = uu['seem_model'], uu['cfg']
@@ -245,7 +249,7 @@ def FG_remove_All(opt, img, reftxt = 'Car', preloaded_seem_detector = None, prel
         # mask -> torch.Tensor
 
     if use_llm:
-        agent = get_vehicle_agent(engin='')
+        agent = get_vehicle_agent(engine='claude-3-haiku-20240307')
 
     sure_mask_list = [
         (x['mask'] * (255. if torch.max(x['mask']) <= 1. else 1.)) for x in object_mask_list if (agent.vehicle_judge_ask(x['name']) if use_llm else reftxt.lower() in x['name'].lower())
