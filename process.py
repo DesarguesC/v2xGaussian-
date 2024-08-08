@@ -62,15 +62,16 @@ if __name__ == '__main__':
         out_rgba = f'{out_rgba}_{cnt}.png'
         # load image
         print(f'[INFO] loading image {file}...')
-        image = cv2.imread(file, cv2.IMREAD_UNCHANGED) # read
-        
+        # image = cv2.imread(file, cv2.IMREAD_UNCHANGED) # read
+        image = Image.open(file)
         # TODO: use seem to remove foreground
         print(f'[INFO] background removal...')
         carved_image, mask = FG_remove(opt = opt, img = image, preloaded_seem_detector=preloaded_seem_detector, preloaded_lama_dict=preloaded_lama_dict)
-        # exit(-1)
+
         # TODO: save intermediate results
         cv2.imwrite(os.path.join(opt.results, 'remove/r.jpg'), cv2.cvtColor(np.uint8(carved_image), cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, 'remove/m.jpg'), cv2.cvtColor(np.uint8(mask), cv2.COLOR_RGB2BGR))
-        exit(-1)
+
 
     print('\nDone.')
+

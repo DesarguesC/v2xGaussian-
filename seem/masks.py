@@ -50,7 +50,7 @@ def preload_seem_detector(opt, preloaded_seem_detector = None):
     seem_model.model.task_switch['grounding'] = True
 
     preloaded_seem_detector = seem_model
-    return {'seem_model': preloaded_seem_detector, 'cfg': cfg}
+    return {'seem_model': preloaded_seem_detector.to(opt.device), 'cfg': cfg}
 
 def preload_lama_remover(opt, preloaded_lama_dict = None):
     if preloaded_lama_dict is not None: return preloaded_lama_dict
@@ -168,16 +168,17 @@ def process_seem_outputs(temperature, results, extra):
 
 
 def FG_remove(opt, img, reftxt = 'Cars', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 15):
-    # img: np.array -> [H W 3]
+    # img: PIL.Image
     uu = preload_seem_detector(opt, preloaded_seem_detector)
     seem_model, seem_cfg = uu['seem_model'], uu['cfg']
     # sys.exit(-1)
     preloaded_lama_dict = preload_lama_remover(opt, preloaded_lama_dict)
 
-    height, width, _ = img.shape
+    width, height = img.size
     img_ori = np.asarray(img).copy()
     img = torch.from_numpy(img_ori).permute(2, 0, 1).cuda()
-    visual = Visualizer(img, metadata=metadata)
+    # print(f'img.size = {img.size}')
+    visual = Visualizer(img_ori, metadata=metadata)
 
     data = {"image": img, "height": height, "width": width}
     data['text'] = reftxt # flexible targets
