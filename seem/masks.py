@@ -168,7 +168,7 @@ def process_seem_outputs(temperature, results, extra):
     return pred_masks, t_emb, v_emb, pred_masks_pos
 
 
-def FG_remove(opt, img, reftxt = 'Cars', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 15):
+def FG_remove(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 15):
     # img: PIL.Image
     uu = preload_seem_detector(opt, preloaded_seem_detector)
     seem_model, seem_cfg = uu['seem_model'], uu['cfg']
@@ -209,7 +209,7 @@ def FG_remove(opt, img, reftxt = 'Cars', preloaded_seem_detector = None, preload
 
     return Image.fromarray(res), seg_mask, img_inpainted
 
-def FG_remove_All(opt, img, reftxt = 'Cars', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 15):
+def FG_remove_All(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 15):
     # img: PIL.Image
     uu = preload_seem_detector(opt, preloaded_seem_detector)
     seem_model, seem_cfg = uu['seem_model'], uu['cfg']
@@ -237,25 +237,38 @@ def FG_remove_All(opt, img, reftxt = 'Cars', preloaded_seem_detector = None, pre
         'mask': masks_list[i]
     } for i in range(len(category))]
 
+    for x in object_mask_list:
+        k, v = x['name'], x['mask']
+        print(f'name = <{k}>, mask.shape = <{v.shape}>')
+        # mask -> torch.Tensor
+
     sure_mask_list = [
-        (x['mask'] * (255. if np.max(x['mask']) <= 1. else 1.)) for x in object_mask_list if reftxt.lower() in x['name'].lower()
+        (x['mask'] * (255. if torch.max(x['mask']) <= 1. else 1.)) for x in object_mask_list if reftxt.lower() in x['name'].lower()
     ]
     for i in range(len(sure_mask_list)):
         print(f'mask-i.shape = {sure_mask_list[i].shape}')
     mm = sure_mask_list[0]
     print(type(mm))
 
-    mask_merged, comp = np.zeros_like(mm), np.ones_like(mm) * 255
-    for i in range(len(sure_mask_list)):
-        mask_merged = mask_merged[min(comp, mask_merged + sure_mask_list[i])]
-    mask_merged = dilate_mask(mask_merged, dilate_kernel_size)
+    mask_merged, comp = torch.zeros_like(mm), torch.ones_like(mm) * 255.
+    # limit in range [0, 255]
+    for mm in sure_mask_list:
+        uu = mask_merged + mm
+        uu[uu < comp] = 255.
+        mask_merged = uu
+
+    mask_merged = dilate_mask(mask_merged.detach().cpu().numpy(), dilate_kernel_size)
 
     demo = visual.draw_panoptic_seg(mask_all.cpu(), category)  # rgb Image
     res = demo.get_image()
-
+    # mask_merged: [H W]
     img_inpainted = inpaint_img_with_lama(
         img=img_ori, mask=mask_merged, mod=8, device=opt.device, preloaded_lama_remover=preloaded_lama_dict
     )  # -> np.array([H W 3]) | cv2.imwrite: cv2.cvtColor(np.uint8(img_inpainted), cv2.COLOR_RGB2BGR)
+    mask_merged = repeat(rearrange(mask_merged, 'h w -> h w 1'), 'h w 1 -> h w c', c=3)
+    print(f'mask_merged.shape = {mask_merged.shape}')
+    # (F.interpolate(pred_masks_pos[None,], image_size[-2:], mode='bilinear')[0, :, :data['height'],
+    #  :data['width']] > 0.0)
 
     return Image.fromarray(res), mask_merged, img_inpainted
 

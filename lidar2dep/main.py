@@ -85,7 +85,8 @@ def get_CompletionFormer(args):
 
 
 
-if __name__ == '__main__':
+
+def main():
     opt = check_args(args_config)
 
     print('\n\n=== Arguments ===')
@@ -123,5 +124,7 @@ if __name__ == '__main__':
     # use: pdb
     # TODO: check data format
 
-    
+
+if __name__ == '__main__':
+    main()
 

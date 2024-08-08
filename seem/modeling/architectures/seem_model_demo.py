@@ -644,37 +644,6 @@ class GeneralizedSEEM(nn.Module):
                 grd_masks += [pred_gmasks[matched_id,:,:]]
             mask_pred_results += [torch.cat(grd_masks)]
 
-        # comment for multi object inference.
-        # mask_pred_results = []
-        # for idx, batch_per_image in enumerate(batched_inputs):
-        #     grd_texts = batch_per_image['groundings']['texts']
-        #     grd_texts = [x[0] for x in grd_texts]
-
-        #     gtext = self.sem_seg_head.predictor.lang_encoder.get_text_token_embeddings(grd_texts, name='grounding', token=False, norm=False)
-        #     token_emb = gtext['token_emb']
-        #     tokens = gtext['tokens']
-        #     query_emb = token_emb[tokens['attention_mask'].bool()]
-        #     non_zero_query_mask = torch.zeros(query_emb[:,None].shape[:-1], dtype=torch.bool, device=query_emb.device)
-
-        #     extra['grounding_tokens'] = query_emb[:,None]
-        #     extra['grounding_nonzero_mask'] = non_zero_query_mask.t()
-
-        #     features = self.backbone(images.tensor)
-        #     outputs = self.sem_seg_head(features, extra=extra, task='grounding_eval')
-
-        #     pred_gmasks = outputs['pred_gmasks'][idx]
-        #     v_emb = outputs['pred_gtexts'][idx]
-        #     t_emb = gtext['class_emb']
-
-        #     t_emb = t_emb / (t_emb.norm(dim=-1, keepdim=True) + 1e-7)
-        #     v_emb = v_emb / (v_emb.norm(dim=-1, keepdim=True) + 1e-7)            
-
-        #     temperature = self.sem_seg_head.predictor.lang_encoder.logit_scale
-        #     out_prob = vl_similarity(v_emb, t_emb, temperature=temperature)
-            
-        #     matched_id = out_prob.max(0)[1]
-        #     mask_pred_results += [pred_gmasks[matched_id,:,:]]
-
         for i in range(len(mask_pred_results)):
             # upsample masks
             mask_pred_results[i] = F.interpolate(
