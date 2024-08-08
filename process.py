@@ -1,6 +1,7 @@
-import os, glob, cv2, argparse, torch, rembg, sys
+import os, glob, cv2, argparse, torch, rembg, sys, pdb
 import numpy as np
 from PIL import Image
+from seem.utils.constants import COCO_PANOPTIC_CLASSES
 from seem.masks import FG_remove, preload_seem_detector, preload_lama_remover
 
 if __name__ == '__main__':
@@ -46,41 +47,7 @@ if __name__ == '__main__':
         # out_dir = os.path.dirname(opt.results)
 
 
-    # preloaded_seem_detector = preload_seem_detector(opt)
-
-    from seem.utils.arguments import load_opt_from_config_files
-    from seem.modeling.BaseModel import BaseModel
-    from seem.modeling import build_model
-
-    cfg = load_opt_from_config_files([opt.seem_cfg])
-    cfg['device'] = opt.device
-
-    while True:
-        try:
-            built_model = build_model(cfg)
-            seem_model = BaseModel(cfg, built_model)
-            seem_model = seem_model.from_pretrained(opt.seem_ckpt).eval().cuda()  # remember to compile SEEM
-
-            break
-        except Exception as err:
-            print(err)
-
-
-
-
-    with torch.no_grad():
-        seem_model.model.sem_seg_head.predictor.lang_encoder.get_text_embeddings(COCO_PANOPTIC_CLASSES + ["background"],
-                                                                                 is_eval=True)
-    seem_model.model.task_switch['spatial'] = False
-    seem_model.model.task_switch['visual'] = False
-    seem_model.model.task_switch['grounding'] = False
-    seem_model.model.task_switch['audio'] = False
-    seem_model.model.task_switch['grounding'] = True
-
-    preloaded_seem_detector = seem_model
-
-
-
+    preloaded_seem_detector = preload_seem_detector(opt)
     preloaded_lama_dict = preload_lama_remover(opt)
 
 
@@ -93,15 +60,12 @@ if __name__ == '__main__':
         while os.path.exists(f'{out_rgba}_{cnt}.png'):
             cnt += 1
         out_rgba = f'{out_rgba}_{cnt}.png'
-
         # load image
         print(f'[INFO] loading image {file}...')
         image = cv2.imread(file, cv2.IMREAD_UNCHANGED) # read
         
         # TODO: use seem to remove foreground
         print(f'[INFO] background removal...')
-
-
         carved_image, mask = FG_remove(opt = opt, img = image, preloaded_seem_detector=preloaded_seem_detector, preloaded_lama_dict=preloaded_lama_dict)
         # exit(-1)
         # TODO: save intermediate results
