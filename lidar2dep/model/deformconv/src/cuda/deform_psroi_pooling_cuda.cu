@@ -15,7 +15,12 @@
 #include <ATen/ATen.h>
 #include <ATen/cuda/CUDAContext.h>
 
-#include <THC/THC.h>
+#include <c10/cuda/CUDAStream.h>
+#include <tuple>
+#include <cuda_runtime.h>
+
+
+// #include <THC/THC.h>
 #include <THC/THCAtomics.cuh>
 #include <THC/THCDeviceUtils.cuh>
 
@@ -28,6 +33,11 @@ const int CUDA_NUM_THREADS = 1024;
 inline int GET_BLOCKS(const int N)
 {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+}
+
+#include <cmath>
+inline int ceil_div(int a, int b) {
+    return (a + b - 1) / b;
 }
 
 template <typename T>
@@ -307,11 +317,21 @@ deform_psroi_pooling_cuda_forward(const at::Tensor &input,
 
   if (out.numel() == 0)
   {
+    /* Origin
     THCudaCheck(cudaGetLastError());
+    */
+
+    // ATen API
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        throw std::runtime_error(cudaGetErrorString(err));
+    }
     return std::make_tuple(out, top_count);
+
   }
 
-  dim3 grid(std::min(THCCeilDiv(out_size, 512L), 4096L));
+  // dim3 grid(std::min(THCCeilDiv(out_size, 512L), 4096L)); // -> Origin
+  dim3 grid(std::min((long int)(ceil_div(out_size, 512L)), 4096L));
   dim3 block(512);
 
   AT_DISPATCH_FLOATING_TYPES(input.type(), "deform_psroi_pooling_cuda_forward", [&] {
@@ -336,7 +356,11 @@ deform_psroi_pooling_cuda_forward(const at::Tensor &input,
         out.data<scalar_t>(),
         top_count.data<scalar_t>());
   });
-  THCudaCheck(cudaGetLastError());
+//   THCudaCheck(cudaGetLastError()); -> Origin
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess) {
+        throw std::runtime_error(cudaGetErrorString(err));
+  }
   return std::make_tuple(out, top_count);
 }
 
@@ -380,11 +404,16 @@ deform_psroi_pooling_cuda_backward(const at::Tensor &out_grad,
 
   if (input_grad.numel() == 0)
   {
-    THCudaCheck(cudaGetLastError());
+//     THCudaCheck(cudaGetLastError()); -> Origin
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        throw std::runtime_error(cudaGetErrorString(err));
+    }
     return std::make_tuple(input_grad, trans_grad);
   }
 
-  dim3 grid(std::min(THCCeilDiv(out_size, 512L), 4096L));
+//   dim3 grid(std::min(THCCeilDiv(out_size, 512L), 4096L)); -> Origin
+  dim3 grid(std::min((long int)(ceil_div(out_size, 512L)), 4096L));
   dim3 block(512);
   cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
@@ -414,6 +443,10 @@ deform_psroi_pooling_cuda_backward(const at::Tensor &out_grad,
         num_classes,
         channels_each_class);
   });
-  THCudaCheck(cudaGetLastError());
+  //   THCudaCheck(cudaGetLastError()); -> Origin
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess) {
+        throw std::runtime_error(cudaGetErrorString(err));
+  }
   return std::make_tuple(input_grad, trans_grad);
 }
