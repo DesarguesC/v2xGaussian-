@@ -19,6 +19,8 @@ from seem.utils.arguments import load_opt_from_config_files
 from seem.modeling.BaseModel import BaseModel
 from seem.modeling import build_model
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
+from guidance.llm_util import get_vehicle_agent
+
 
 
 metadata = MetadataCatalog.get('coco_2017_train_panoptic')
@@ -209,7 +211,7 @@ def FG_remove(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloade
 
     return Image.fromarray(res), seg_mask, img_inpainted
 
-def FG_remove_All(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 15):
+def FG_remove_All(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloaded_lama_dict = None, dilate_kernel_size = 10, use_llm=False):
     # img: PIL.Image
     uu = preload_seem_detector(opt, preloaded_seem_detector)
     seem_model, seem_cfg = uu['seem_model'], uu['cfg']
@@ -242,8 +244,11 @@ def FG_remove_All(opt, img, reftxt = 'Car', preloaded_seem_detector = None, prel
         print(f'name = <{k}>, mask.shape = <{v.shape}>')
         # mask -> torch.Tensor
 
+    if use_llm:
+        agent = get_vehicle_agent(engin='')
+
     sure_mask_list = [
-        (x['mask'] * (255. if torch.max(x['mask']) <= 1. else 1.)) for x in object_mask_list if reftxt.lower() in x['name'].lower()
+        (x['mask'] * (255. if torch.max(x['mask']) <= 1. else 1.)) for x in object_mask_list if (agent.vehicle_judge_ask(x['name']) if use_llm else reftxt.lower() in x['name'].lower())
     ]
     for i in range(len(sure_mask_list)):
         print(f'mask-i.shape = {sure_mask_list[i].shape}')
@@ -254,7 +259,7 @@ def FG_remove_All(opt, img, reftxt = 'Car', preloaded_seem_detector = None, prel
     # limit in range [0, 255]
     for mm in sure_mask_list:
         uu = mask_merged + mm
-        uu[uu < comp] = 255.
+        uu[uu > comp] = 255.
         mask_merged = uu
 
     mask_merged = dilate_mask(mask_merged.detach().cpu().numpy(), dilate_kernel_size)
@@ -266,11 +271,15 @@ def FG_remove_All(opt, img, reftxt = 'Car', preloaded_seem_detector = None, prel
         img=img_ori, mask=mask_merged, mod=8, device=opt.device, preloaded_lama_remover=preloaded_lama_dict
     )  # -> np.array([H W 3]) | cv2.imwrite: cv2.cvtColor(np.uint8(img_inpainted), cv2.COLOR_RGB2BGR)
     mask_merged = repeat(rearrange(mask_merged, 'h w -> h w 1'), 'h w 1 -> h w c', c=3)
-    print(f'mask_merged.shape = {mask_merged.shape}')
+
+    print(f'res.shape = {res.shape}, type(res) = {type(res)}')
+    print(f'mask_merged.shape = {mask_merged.shape}, type(mask_merged) = {type(mask_merged)}')
+    print(f'img_inpainted.shape = {img_inpainted.shape}, type(img_inpainted) = {type(img_inpainted)}')
+
     # (F.interpolate(pred_masks_pos[None,], image_size[-2:], mode='bilinear')[0, :, :data['height'],
     #  :data['width']] > 0.0)
 
-    return Image.fromarray(res), mask_merged, img_inpainted
+    return res, mask_merged, img_inpainted
 
 
 

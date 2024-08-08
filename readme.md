@@ -33,4 +33,8 @@ pip install git+https://github.com/MaureenZOU/detectron2-xyz.git && \
 pip install -e git+https://github.com/DesarguesC/kornia@master#egg=kornia
 ```
 
+## LLM
+
+put your OpenAI/Anthropic Token in 'key.csv', Anthropic Claude is highly recommended.
+
 

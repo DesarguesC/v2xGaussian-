@@ -69,9 +69,9 @@ if __name__ == '__main__':
         res, mask, carved_image = FG_remove_All(opt = opt, img = image, preloaded_seem_detector=preloaded_seem_detector, preloaded_lama_dict=preloaded_lama_dict)
 
         # TODO: save intermediate results
-        cv2.imwrite(os.path.join(opt.results, 'remove/mask.jpg'), cv2.cvtColor(np.uint8(res), cv2.COLOR_RGB2BGR))
-        cv2.imwrite(os.path.join(opt.results, 'remove/res.jpg'), cv2.cvtColor(np.uint8(carved_image), cv2.COLOR_RGB2BGR))
-        cv2.imwrite(os.path.join(opt.results, 'remove/removed.jpg'), cv2.cvtColor(np.uint8(mask), cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(opt.results, 'remove/mask.jpg'), cv2.cvtColor(np.uint8(mask), cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(opt.results, 'remove/res.jpg'), cv2.cvtColor(np.uint8(res), cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(opt.results, 'remove/removed.jpg'), cv2.cvtColor(np.uint8(carved_image), cv2.COLOR_RGB2BGR))
 
 
     print('\nDone.')
