@@ -6,6 +6,12 @@ def encode_image(image_path):
     with open(image_path, 'rb') as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
+def forground_partial(name) -> bool:
+    return 'car' in name or 'bus' in name or 'truck' in name
+
+def background_patial(name) -> bool:
+    return 'sky' in name or 'building' in name or 'light' in name or 'bridge' in name or 'tree' in name
+
 class Claude():
     def __init__(self, engine, api_key, system_prompt, proxy='http://127.0.0.1:7890', max_tokens=50, temperature=0.8):
         self.engine = engine
@@ -20,23 +26,33 @@ class Claude():
         )
 
     def vehicle_judge_ask(self, name) -> bool:
-        name = name.lower
-        if 'car' in name or 'bus' in name or 'truck' in name:
+        name = name.lower()
+        if forground_partial(name):
             return True
-        elif 'sky' in name or 'building' in name or 'light' in name or 'bridge' in name or 'tree' in name:
+        elif background_patial(name):
             return False
+        try_time = 3
+        while try_time > 0:
+            try:
+                response = self.client.messages.create(
+                    model=self.engine,  # "claude-2.1",
+                    max_tokens=self.max_tokens,
+                    system=self.system_prompt,  # <-- system prompt
+                    temperature=self.temperature,
+                    messages=[
+                        {"role": "user", "content": name}  # <-- user prompt
+                    ]
+                ).content[-1].text
+            except Exception as err:
+                print(f'err: {err}')
+                try_time -= 1
+                continue
 
-        response = self.client.messages.create(
-            model=self.engine,  # "claude-2.1",
-            max_tokens=self.max_tokens,
-            system=self.system_prompt,  # <-- system prompt
-            temperature=self.temperature,
-            messages=[
-                {"role": "user", "content": name}  # <-- user prompt
-            ]
-        ).content[-1].text
+            return 'yes' in response.lower()
 
-        return 'yes' in response.lower()
+        # didn't handle with the net work error
+        return False
+
 
 
     def pre_cut(self, prompt):

@@ -143,7 +143,7 @@ parser.add_argument('--opt_level',
                     choices=('O0', 'O1', 'O2', 'O3'))
 parser.add_argument('--pretrain',
                     type=str,
-                    default=None,
+                    default='../../Tools/KITTIDC_L1L2.pt',
                     help='ckpt path')
 parser.add_argument('--resume',
                     action='store_true',
@@ -256,21 +256,21 @@ parser.add_argument('--save_result_only',
                     help='save result images only with submission format')
 
 parser.add_argument('--rgb_file_path',
-                    default='./data/image/007489.jpg',
+                    default='../data/image/007489.jpg',
                     type=str,
                     help='infrastructures view')
 parser.add_argument('--pcd_file_path',
-                    default='./data/pcd/007489.pcd',
+                    default='../data/pcd/007489.pcd',
                     type=str,
                     help='infrastructure side pcd file')
 
 parser.add_argument('--intrinsic_path',
-                    default='./data/camera/007489-intrinsic.json',
+                    default='../data/camera/007489-intrinsic.json',
                     type=str,
                     help='camera intrinsics param JSON')
 
 parser.add_argument('--extrinsic_path',
-                    default='./data/camera/007489-extrinsic.json',
+                    default='../data/camera/007489-extrinsic.json',
                     type=str,
                     help='camera extrinsics param JSON')
 
