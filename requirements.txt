@@ -39,6 +39,8 @@ h5py
 open3d
 anthropic
 
+timm==0.4.12
+
 albumentations==0.4.3
 webdataset==0.2.35
 mmcv-full==1.4.4
