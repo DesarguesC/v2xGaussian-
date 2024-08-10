@@ -114,7 +114,11 @@ def main():
         depth:      torch.Tensor
         K:          torch.Tensor
     """
-    I_dict = pre_read(opt.rgb_file_path. opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path)
+    # print(type(args_config))
+    # print(args_config)
+    # opt = args_config
+    from config import parser as opt
+    I_dict = pre_read(opt.rgb_file_path, opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path)
     net = get_CompletionFormer(opt)
     rgb, depth, K = I_dict['rgb'], I_dict['dep'], I_dict['K']
     # K: intrinsic matrix -> torch.Tensor
