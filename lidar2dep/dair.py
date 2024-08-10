@@ -1,4 +1,5 @@
 BASE_DIR = './cooperative-vehicle-infrastructure'
+# TODO: read DAIR-V2X dataset
 import os, json, cv2, re
 import numpy as np
 import open3d as o3d
@@ -59,7 +60,11 @@ def render_pcd_view_img(pcd, c_i, c_e, shape):
     """
         pcd: pcd data
         c_i: intrinsic
-        c_e: extrinsic
+        c_e: extrinsic dict:
+            {
+                'height': ..., 'width': ...,
+                'fx': ..., 'cx': ..., 'fy': ..., 'cy': ...
+            }
         shape: image shape [H W 3]
     """
     vis = o3d.visualization.Visualizer()

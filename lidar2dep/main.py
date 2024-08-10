@@ -4,7 +4,7 @@
 
     main script for training and testing.
 """
-
+import pdb
 
 from config import args as args_config
 import random, os, json, torch
@@ -103,7 +103,8 @@ def main():
         --pretrain:     weights path
         --rgb_file_path:        where to locate rgb image file
         --pcd_file_path:        where to lcoate v2x-i view
-        --camera_file_path:     where to put the camera
+        --intrinsic_path:       intrinsic file JSON
+        --extrinsic_path:       extrinsic file JSON
     """
 
 
@@ -113,9 +114,10 @@ def main():
         depth:      torch.Tensor
         K:          torch.Tensor
     """
-    I_dict = pre_read(opt.rgb_file_path. args.pcd_file_path, opt.camra_file_path)
+    I_dict = pre_read(opt.rgb_file_path. opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path)
     net = get_CompletionFormer(opt)
     rgb, depth, K = I_dict['rgb'], I_dict['dep'], I_dict['K']
+    # K: intrinsic matrix -> torch.Tensor
     sample = {
         'rgb': rgb,
         'dep': depth
@@ -123,6 +125,12 @@ def main():
     out = net(sample)
     # use: pdb
     # TODO: check data format
+
+    print(out)
+
+    pdb.set_trace()
+
+
 
 
 if __name__ == '__main__':

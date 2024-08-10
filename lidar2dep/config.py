@@ -255,19 +255,24 @@ parser.add_argument('--save_result_only',
                     default=False,
                     help='save result images only with submission format')
 
-
 parser.add_argument('--rgb_file_path',
-                    default='',
+                    default='./data/image/007489.jpg',
                     type=str,
                     help='infrastructures view')
-parser.add_argument('pcd_file_path',
-                    default='',
+parser.add_argument('--pcd_file_path',
+                    default='./data/pcd/007489.pcd',
                     type=str,
-                    default='infrastructure total point cloud')
-parser.add_argument('camera_file_paht',
-                    default='',
+                    help='infrastructure side pcd file')
+
+parser.add_argument('--intrinsic_path',
+                    default='./data/camera/007489-intrinsic.json',
                     type=str,
-                    default='where to put the camera extrincs, in JSON format')
+                    help='camera intrinsics param JSON')
+
+parser.add_argument('--extrinsic_path',
+                    default='./data/camera/007489-extrinsic.json',
+                    type=str,
+                    help='camera extrinsics param JSON')
 
 # rgb_file_path, pcd_file_path, camera_file_path
 
