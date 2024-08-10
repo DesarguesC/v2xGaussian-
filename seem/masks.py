@@ -1,4 +1,4 @@
-import torch, cv2, os, glob, subprocess, random, yaml, sys, pdb
+import torch, cv2, os, yaml, pdb
 import numpy as np
 import torch.nn.functional as F
 from PIL import Image
@@ -8,9 +8,7 @@ from detectron2.data import MetadataCatalog
 from einops import rearrange, repeat
 
 from .modeling.language.loss import vl_similarity
-from .utils.constants import COCO_PANOPTIC_CLASSES
 from detectron2.data.datasets.builtin_meta import COCO_CATEGORIES
-
 from lama.saicinpainting.evaluation.utils import move_to_device
 from lama.saicinpainting.training.trainers import load_checkpoint
 from lama.saicinpainting.evaluation.data import pad_tensor_to_modulo

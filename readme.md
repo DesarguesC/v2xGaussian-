@@ -41,7 +41,8 @@ pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cud
 # build DCN module
 cd lidar2dep/model/deformconv && python setup.py build install && cd ../../../
 ```
-
+Note that when install "apex", there is probably encountered with an error "cannot import name 'container_abcs' from 'torch._six'", 
+which can be solved by directly amend the file where import error occurred.
 
 
 
