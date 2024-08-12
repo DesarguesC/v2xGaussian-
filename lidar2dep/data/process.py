@@ -27,6 +27,32 @@ def read_calib_file(filepath):
 
     return data
 
+def create_former_input(
+        rgb_np_img: np.ndarray,
+        pcd_np_img:np.ndarray,
+        camera_intrinsic: np.ndarray,
+        keep_ratio: float = 1.
+    ):
+    assert camera_intrinsic.shape == (3,3), camera_intrinsic
+    assert keep_ratio >= 0 and keep_ratio <= 1.0, keep_ratio
+    assert len(camera_intrinsic.keys()) == 5, camera_intrinsic
+
+    if np.max(pcd_np_img) <= 1.: pcd_np_img = (pcd_np_img * 255).astype(np.uint8)
+    if np.max(rgb_np_img) <= 1.: rgb_np_img = (rgb_np_img * 255).astype(np.uint8)
+
+    sampled_depth = sample_lidar_lines(
+        depth_map=pcd_np_img, intrinsics=camera_intrinsic, keep_ratio=keep_ratio
+    )
+
+    return {
+        'rgb': rgb_np_img,
+        'dep': sampled_depth,
+        'K_matrix': torch.Tensor(camera_intrinsic)
+    }
+
+
+
+
 # pcd is namely the sparse depth ?
 def pre_read(rgb_file_path, pcd_file_path, intrinsic_path, extrinsic_path, lidar_lines=64, return_tensor=True):
     # L109 -> L247 -> L91, L285

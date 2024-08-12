@@ -4,6 +4,9 @@ import os, json, cv2, re
 import numpy as np
 import open3d as o3d
 from matplotlib import pyplot as plt
+from lidar2dep.main import get_CompletionFormer as getFormer
+from lidar2dep.main import create_former_input
+
 
 def load_camera_intrinsic(json_path, return_dict=False):
     # ./infrastructure-side/calib/camera_intrinc
@@ -39,7 +42,8 @@ def load_camera_intrinsic(json_path, return_dict=False):
                 "fx": float(cam_K[0,0]), "fy": float(cam_K[1,1]), 
                 "cx": float(cam_K[0,2]), "cy": float(cam_K[1,2])
             },
-            'extrinsic': np.array([[1.,0.,0.,0.],[0.,1.,0.,0.],[0.,0.,1.,0.],[0.,0.,0.,0.]]) # ?
+            'extrinsic': np.array([[1.,0.,0.,0.],[0.,1.,0.,0.],[0.,0.,1.,0.],[0.,0.,0.,0.]]),  # ?
+            'intrinsic_matrix': cam_K
         }
     else:
         return int(w), int(h), float(cam_K[0,0]), float(cam_K[1,1]), float(cam_K[0,2]), float(cam_K[1,2])
@@ -121,6 +125,7 @@ class CooperativeData:
         u = load_camera_intrinsic(os.path.join(f'{BASE_DIR}/infrastructure-side/calib/camera_intrinsic', f'{inf_id}.json'), return_dict=True)
         self.camera_intrinsic = u['intrinsic']
         self.inf_ex = u['extrinsic']
+        self.camera_intrinsic_matrix = u['intrinsic_matrix']
         self.veh_ex = load_camera_R(os.path.join(f'{BASE_DIR}/vehicle-side/calib/lidar_to_camera', f'{veh_id}.json'))
 
         # self.camera_extrinsic_inf = 
@@ -151,4 +156,28 @@ class CooperativeData:
         
         return getattr(self, f'{which}_side_img'), side_pcd_img
 
+    def get_side(self, which='inf'):
+        assert which in ['inf', 'veh'], which
+        side_img = getattr(self, f'{which}_side_img')
+        pcd_rendered = render_pcd_view_img(
+                getattr(self, f'{which}_side_pcd'),
+                self.camera_intrinsic,
+                getattr(self, f'{which}_ex'),
+                getattr(self, f'{which}_side_img').shape
+            )
+        return side_img, pcd_rendered
 
+    def get_side_and_depth(self, opt, which='inf', former=None):
+        assert which in ['inf', 'veh'], which
+        if former is None:
+            former = getFormer(opt)
+        side_img = getattr(self, f'{which}_side_img')
+        pcd_rendered = render_pcd_view_img(
+            getattr(self, f'{which}_side_pcd'),
+            self.camera_intrinsic,
+            getattr(self, f'{which}_ex'),
+            getattr(self, f'{which}_side_img').shape
+        )
+        depth = former(create_former_input(side_img, pcd_rendered, self.camera_intrinsic_matrix))
+
+        return side_img, pcd_rendered, depth

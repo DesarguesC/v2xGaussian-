@@ -12,26 +12,11 @@ os.environ["CUDA_VISIBLE_DEVICES"] = args_config.gpus
 os.environ["MASTER_ADDR"] = args_config.address
 os.environ["MASTER_PORT"] = args_config.port
 
-import numpy as np
 from torch import nn
-from torch.utils.data import DataLoader
-from torch.utils.data.distributed import DistributedSampler
 torch.autograd.set_detect_anomaly(True)
-
 import utility
 from model.completionformer import CompletionFormer
-from summary.cfsummary import CompletionFormerSummary
-from metric.cfmetric import CompletionFormerMetric
-from data import get as get_data
-from loss.l1l2loss import L1L2Loss
 
-# Multi-GPU and Mixed precision supports
-# NOTE : Only 1 process per GPU is supported now
-import torch.multiprocessing as mp
-import torch.distributed as dist
-import apex
-from apex.parallel import DistributedDataParallel as DDP
-from apex import amp
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
