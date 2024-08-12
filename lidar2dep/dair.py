@@ -1,6 +1,6 @@
 BASE_DIR = './cooperative-vehicle-infrastructure'
 # TODO: read DAIR-V2X dataset
-import os, json, cv2, re
+import os, json, cv2, re, pdb
 import numpy as np
 import open3d as o3d
 from matplotlib import pyplot as plt
@@ -167,7 +167,7 @@ class CooperativeData:
             )
         return side_img, pcd_rendered
 
-    def get_side_and_depth(self, opt, which='inf', former=None):
+    def get_side_and_depth(self, opt, which='inf', former=None, w=0.3):
         assert which in ['inf', 'veh'], which
         if former is None:
             former = getFormer(opt)
@@ -179,5 +179,10 @@ class CooperativeData:
             getattr(self, f'{which}_side_img').shape
         )
         depth = former(create_former_input(side_img, pcd_rendered, self.camera_intrinsic_matrix))
+        try:
+            weighted_depth = pcd_rendered * w + depth * (1. - w)
+        except Exception as err:
+            print(f'error: {err}')
+            pdb.set_trace()
 
-        return side_img, pcd_rendered, depth
+        return side_img, pcd_rendered, depth, weighted_depth
