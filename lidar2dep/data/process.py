@@ -100,37 +100,25 @@ def pre_read(rgb_file_path, pcd_file_path, intrinsic_path, extrinsic_path, lidar
     # Off Screen Rendering
     renderer = o3d.visualization.rendering.OffscreenRenderer(K_dict['width'], K_dict['height'])
     material = o3d.visualization.rendering.MaterialRecord()
-    material.point_size = 5.0
+    material.point_size = 5
     renderer.scene.add_geometry("point_cloud", pcd_file, material)
-
-    """
-    # On Screen Rendering
-    
-        vis = o3d.visualization.Visualizer()
-        vis.create_window(visible=False, width=K_dict['width'], height=K_dict['height'])
-        vis.add_geometry(pcd_file)
-    
-    On Screen Camera Parameter
-    
-        camera_parameters = o3d.camera.PinholeCameraParameters()
-        camera_parameters.extrinsic = A # np.array [4,4]
-        camera_parameters.intrinsic.set_intrinsics(**K_dict)
-    """
-    # Off Screen Camera Parameter
-    # camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(**K_dict)
-    # camera = o3d.visualization.rendering.Camera()
-    # camera.setup_camera(camera_intrinsic, camera_extrinsic, K_dict['width'], K_dict['height'])
-    # Off Screen Renderer
-    # renderer.setup_camera(camera_intrinsic, camera_extrinsic, K_dict['width'], K_dict['height'])
 
     renderer.setup_camera(K_matrix, A, K_dict['width'], K_dict['height'])
     pcd_img = np.asarray(renderer.render_to_depth_image())
     # TODO: check if this multiplication is need
 
-    # pdb.set_trace()
-    depth_image = (pcd_img * (255. if np.max(pcd_img) <= 1. else 1. )).astype(np.uint8)
+
     # Shape[H W]
-    cv2.imwrite('../data/depth-tmp/test.jpg', cv2.cvtColor(depth_image, cv2.COLOR_RGB2BGR))
+
+    # Standard Nom First
+    # depth_image = (depth_image - np.mean(depth_image)) / np.std(depth_image)
+
+    # Max-Min Norm
+    M, m  = np.max(pcd_img), np.min(pcd_img)
+    depth_image = (pcd_img - m) / (M - m) * 255.
+
+    colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_JET)
+    cv2.imwrite('../data/depth-tmp/test.jpg', cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
 
     sampled_depth = sample_lidar_lines(
         depth_map = depth_image, intrinsics = K_matrix, keep_ratio=keep_ratio

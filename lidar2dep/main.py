@@ -142,12 +142,23 @@ def main():
     # TODO: check data format
 
     print(out)
-    pred = out['pred'].squeeze(0) # [1 1 H W]
-    pred = repeat(rearrange(pred, '1 h w -> h w 1'), 'h w 1 -> h w c', c=3)
+    pred = out['pred'].squeeze() # [1 1 H W]
     pred = pred.detach().cpu().numpy().astype(np.uint8)
+    M, m = np.max(pred), np.min(pred)
+    pred = (pred - m) / (M - m) * 255.
+    colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_JET)
     print(pred)
-    cv2.imwrite('../data/depth-tmp/test++.jpg', cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
-    pdb.set_trace()
+    cv2.imwrite('../data/depth-tmp/test++.jpg', cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
+
+    pred_init = out['pred_init'].squeeze()
+    pred_init = pred_init.detach().cpu().numpy().astype(np.uint8)
+    M, m = np.max(pred_init), np.min(pred_init)
+    pred_init = (pred_init - m) / (M - m) * 255.
+    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_JET)
+    print(colored_init)
+    cv2.imwrite('../data/depth-tmp/init.jpg', cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
+
+
 
 
 if __name__ == '__main__':
