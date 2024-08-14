@@ -49,6 +49,7 @@ database.db
 # Distribution / packaging
 .Python
 upload_files/
+data/depth-tmp
 build/
 develop-eggs/
 dist/

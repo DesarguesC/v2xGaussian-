@@ -20,7 +20,8 @@ def sample_lidar_lines(
     sparse_depth_map: array like
         the sparsified depth map of shape H x W x 1
     """
-
+    if(len(depth_map.shape) < 3):
+        depth_map = np.expand_dims(depth_map, axis=-1)
     v, u, _ = np.nonzero(depth_map)
     z = depth_map[v, u, 0]
     points = np.linalg.inv(intrinsics) @ (np.vstack([u, v, np.ones_like(u)]) * z)

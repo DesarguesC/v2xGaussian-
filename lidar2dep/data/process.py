@@ -1,5 +1,5 @@
 # reference: https://github.com/youmi-zym/CompletionFormer/blob/main/src/data/kittidc.py
-import os, json, random
+import os, json, random, pdb, cv2
 import open3d as o3d
 import numpy as np
 from . import BaseDataset
@@ -94,26 +94,43 @@ def pre_read(rgb_file_path, pcd_file_path, intrinsic_path, extrinsic_path, lidar
 
     # TODO: 找到rgb图片视角下的pcd渲染出的sparse depth
     rgb_image = Image.open(rgb_file_path)
-    # width, height = rgb_image.size
-
     pcd_file = o3d.io.read_point_cloud(pcd_file_path)
-    vis = o3d.visualization.Visualizer()
-    vis.create_window(visible=False, width=K_dict['width'], height=K_dict['height'])
-    vis.add_geometry(pcd_file)
-
-    camera_parameters = o3d.camera.PinholeCameraParameters()
-    camera_parameters.extrinsic = A # np.array [4,4]
-    camera_parameters.intrinsic.set_intrinsics(**K_dict)
 
 
-    view_control = vis.get_view_control()
-    view_control.convert_from_pinhole_camera_parameters(camera_parameters) # To render the cooresponding view
-    vis.poll_events()
-    vis.update_renderer()
+    # Off Screen Rendering
+    renderer = o3d.visualization.rendering.OffscreenRenderer(K_dict['width'], K_dict['height'])
+    material = o3d.visualization.rendering.MaterialRecord()
+    material.point_size = 5.0
+    renderer.scene.add_geometry("point_cloud", pcd_file, material)
 
-    pcd_img = np.asarray(vis.capture_screen_float_buffer(do_render=True))
+    """
+    # On Screen Rendering
+    
+        vis = o3d.visualization.Visualizer()
+        vis.create_window(visible=False, width=K_dict['width'], height=K_dict['height'])
+        vis.add_geometry(pcd_file)
+    
+    On Screen Camera Parameter
+    
+        camera_parameters = o3d.camera.PinholeCameraParameters()
+        camera_parameters.extrinsic = A # np.array [4,4]
+        camera_parameters.intrinsic.set_intrinsics(**K_dict)
+    """
+    # Off Screen Camera Parameter
+    # camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(**K_dict)
+    # camera = o3d.visualization.rendering.Camera()
+    # camera.setup_camera(camera_intrinsic, camera_extrinsic, K_dict['width'], K_dict['height'])
+    # Off Screen Renderer
+    # renderer.setup_camera(camera_intrinsic, camera_extrinsic, K_dict['width'], K_dict['height'])
+
+    renderer.setup_camera(K_matrix, A, K_dict['width'], K_dict['height'])
+    pcd_img = np.asarray(renderer.render_to_depth_image())
     # TODO: check if this multiplication is need
-    depth_image = (pcd_img * 255).astype(np.uint8)
+
+    # pdb.set_trace()
+    depth_image = (pcd_img * (255. if np.max(pcd_img) <= 1. else 1. )).astype(np.uint8)
+    # Shape[H W]
+    cv2.imwrite('../data/depth-tmp/test.jpg', cv2.cvtColor(depth_image, cv2.COLOR_RGB2BGR))
 
     sampled_depth = sample_lidar_lines(
         depth_map = depth_image, intrinsics = K_matrix, keep_ratio=keep_ratio
@@ -126,9 +143,6 @@ def pre_read(rgb_file_path, pcd_file_path, intrinsic_path, extrinsic_path, lidar
         rgb = TF.normalize(rgb, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225), inplace=True)
         depth = TF.to_tensor(np.array(sampled_depth))
         return {'rgb': rgb, 'dep': depth, 'K': torch.Tensor(K_matrix)}
-
-
-
 
 
 

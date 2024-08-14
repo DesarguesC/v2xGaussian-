@@ -5,7 +5,7 @@
     main script for training and testing.
 """
 import pdb
-
+from einops import repeat, rearrange
 from config import args as args_config
 import random, os, json, torch
 os.environ["CUDA_VISIBLE_DEVICES"] = args_config.gpus
@@ -13,6 +13,7 @@ os.environ["MASTER_ADDR"] = args_config.address
 os.environ["MASTER_PORT"] = args_config.port
 
 from torch import nn
+from torch.nn.functional import interpolate as Inter
 torch.autograd.set_detect_anomaly(True)
 import utility
 from model.completionformer import CompletionFormer
@@ -48,6 +49,21 @@ def check_args(args):
     return new_args
 
 from data.process import *
+
+
+def get_new_size(shape, threshold=1e3-200):
+    assert len(shape) >= 3, shape
+    a, b = shape[2 if len(shape) == 4 else 1:]
+    s = 1.
+    while a > threshold or b > threshold:
+        a /= s
+        b /= s
+        s += 0.5
+
+    a = int(a/64+0.5) * 64
+    b = int(b/64+0.5) * 64
+
+    return (a, b)
 
 
 def get_CompletionFormer(args):
@@ -99,27 +115,39 @@ def main():
         depth:      torch.Tensor
         K:          torch.Tensor
     """
-    # print(type(args_config))
-    # print(args_config)
-    # opt = args_config
-    from config import parser as opt
+
+    # from config import parser as opt
     I_dict = pre_read(opt.rgb_file_path, opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path)
     net = get_CompletionFormer(opt)
     rgb, depth, K = I_dict['rgb'], I_dict['dep'], I_dict['K']
-    # K: intrinsic matrix -> torch.Tensor
+    # K: intrinsic matrix -> torch.Tensor[3 3]
+    if len(rgb.shape) <= 3:
+        rgb = rgb.unsqueeze(0)
+    if len(depth.shape) <= 3:
+        depth = depth.unsqueeze(0)
+
+    assert len(rgb.shape) == 4 and len(depth.shape) == 4, f'rgb.shape = {rgb.shape}, dep.shape = {depth.shape}'
+    rgb_size = get_new_size(rgb.shape)
+    dep_size = get_new_size(depth.shape)
+    rgb = Inter(torch.tensor(rgb, dtype=torch.float32), size=rgb_size, mode="bilinear")
+    depth = Inter(torch.tensor(depth, dtype=torch.float32), size=dep_size, mode="bilinear")
+
     sample = {
-        'rgb': rgb,
-        'dep': depth
+        'rgb': rgb.cuda(),     # torch.Tensor[1, 3, H, W]
+        'dep': depth.cuda()    # torch.Tensor[1, 1, H, W]
     }
+
     out = net(sample)
     # use: pdb
     # TODO: check data format
 
     print(out)
-
+    pred = out['pred'].squeeze(0) # [1 1 H W]
+    pred = repeat(rearrange(pred, '1 h w -> h w 1'), 'h w 1 -> h w c', c=3)
+    pred = pred.detach().cpu().numpy().astype(np.uint8)
+    print(pred)
+    cv2.imwrite('../data/depth-tmp/test++.jpg', cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
     pdb.set_trace()
-
-
 
 
 if __name__ == '__main__':

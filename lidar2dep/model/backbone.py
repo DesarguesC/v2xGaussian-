@@ -142,8 +142,8 @@ class Backbone(nn.Module):
     def forward(self, rgb=None, depth=None):
         # Encoding
         if self.mode == 'rgbd':
-            fe1_rgb = self.conv1_rgb(rgb)
-            fe1_dep = self.conv1_dep(depth)
+            fe1_rgb = self.conv1_rgb(rgb) # [48, H W]
+            fe1_dep = self.conv1_dep(depth) # [16 H W]
             fe1 = torch.cat((fe1_rgb, fe1_dep), dim=1)
             fe1 = self.conv1(fe1)
         elif self.mode == 'rgb':
