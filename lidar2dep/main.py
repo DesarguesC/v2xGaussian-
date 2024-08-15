@@ -117,7 +117,7 @@ def main():
     """
 
     # from config import parser as opt
-    I_dict = pre_read(opt.rgb_file_path, opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path)
+    I_dict = pre_read(opt.depth_path, opt.rgb_file_path, opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path)
     net = get_CompletionFormer(opt)
     rgb, depth, K = I_dict['rgb'], I_dict['dep'], I_dict['K']
     # K: intrinsic matrix -> torch.Tensor[3 3]
@@ -148,7 +148,7 @@ def main():
     pred = (pred - m) / (M - m) * 255.
     colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_JET)
     print(pred)
-    cv2.imwrite('../data/depth-tmp/test++.jpg', cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_depth.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
 
     pred_init = out['pred_init'].squeeze()
     pred_init = pred_init.detach().cpu().numpy().astype(np.uint8)
@@ -156,7 +156,7 @@ def main():
     pred_init = (pred_init - m) / (M - m) * 255.
     colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_JET)
     print(colored_init)
-    cv2.imwrite('../data/depth-tmp/init.jpg', cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_init.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
 
 
 

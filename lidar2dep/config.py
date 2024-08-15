@@ -274,6 +274,11 @@ parser.add_argument('--extrinsic_path',
                     type=str,
                     help='camera extrinsics param JSON')
 
+parser.add_argument('--depth_path',
+                    default='../data/depth',
+                    type=str,
+                    help='where to output results')
+
 # rgb_file_path, pcd_file_path, camera_file_path
 
 args = parser.parse_args()
