@@ -6,9 +6,12 @@ path_list = [
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/mask.jpg',
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/res.jpg',
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/removed.jpg', 
-    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/colored_pred_depth.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/colored_pred_init.jpg'
+    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd-fg.jpg',
+    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/colored_pred_depth-fg.jpg',
+    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/colored_pred_init-fg.jpg',
+    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd-bg.jpg',
+    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/colored_pred_depth-bg.jpg',
+    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/colored_pred_init-bg.jpg'
 ]
 
 # 定义函数以读取并返回图片
@@ -21,7 +24,9 @@ def load_images():
     # img2 = img2.resize((img2.size[0]//2, img2.size[1]//2), Image.Resampling.BILINEAR)
     # img3 = img3.resize((img3.size[0]//2, img3.size[1]//2), Image.Resampling.BILINEAR)
 
-    return Image.open(path_list[0]), Image.open(path_list[1]), Image.open(path_list[2]), Image.open(path_list[3]), Image.open(path_list[4]), Image.open(path_list[5])
+    return (Image.open(path_list[0]), Image.open(path_list[1]), Image.open(path_list[2]),
+            Image.open(path_list[3]), Image.open(path_list[4]), Image.open(path_list[5]),
+            Image.open(path_list[6]), Image.open(path_list[7]), Image.open(path_list[8]))
 
 # 创建 Gradio 界面
 with gr.Blocks() as demo:
