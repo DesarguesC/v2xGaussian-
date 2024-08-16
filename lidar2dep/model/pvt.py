@@ -11,8 +11,8 @@ from .resnet_cbam import BasicBlock
 
 
 model_path = {
-    'resnet18': 'pretrained/resnet18.pth',
-    'resnet34': 'pretrained/resnet34.pth'
+    'resnet18': './lidar2dep/pretrained/resnet18.pth',
+    'resnet34': './lidar2dep/pretrained/resnet34.pth'
 }
 
 

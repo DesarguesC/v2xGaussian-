@@ -81,8 +81,7 @@ def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic
 
 
     # TODO: 找到rgb图片视角下的pcd渲染出的sparse depth
-    rgb_image = Image.open(rgb_file_path) if isinstance(rgb_file_path, str) else \
-                    rgb_file_path if isinstance(rgb_file_path, Image) else Image.fromarray(rgb_file_path)
+    rgb_image = Image.open(rgb_file_path) if isinstance(rgb_file_path, str) else Image.fromarray(rgb_file_path)
     pcd_file = o3d.io.read_point_cloud(pcd_file_path)
 
 
@@ -103,11 +102,14 @@ def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic
     # depth_image = (depth_image - np.mean(depth_image)) / np.std(depth_image)
 
     # Max-Min Norm
+    if fix_mask is not None: pcd_img = pcd_img * (1. - fix_mask[:, :, 0])
+    # pcd_img: [H W], fix_mask: [H W 3]
     M, m  = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255.
-    if fix_mask is not None: depth_image = depth_image * fix_mask
 
-    colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_JET)
+
+
+    colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     cv2.imwrite(os.path.join(depth_path, 'projected_pcd.jpg'), cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
 
     sampled_depth = sample_lidar_lines(

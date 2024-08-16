@@ -32,6 +32,7 @@ class Claude():
         elif background_patial(name):
             return False
         try_time = 3
+        print('llm judging...')
         while try_time > 0:
             try:
                 response = self.client.messages.create(

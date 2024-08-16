@@ -6,11 +6,8 @@
 """
 import pdb
 from einops import repeat, rearrange
-from config import args as args_config
+
 import random, os, json, torch
-os.environ["CUDA_VISIBLE_DEVICES"] = args_config.gpus
-os.environ["MASTER_ADDR"] = args_config.address
-os.environ["MASTER_PORT"] = args_config.port
 
 from torch import nn
 from torch.nn.functional import interpolate as Inter
@@ -21,15 +18,7 @@ from model.completionformer import CompletionFormer
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-# Minimize randomness
-def init_seed(seed=None):
-    if seed is None:
-        seed = args_config.seed
 
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.cuda.manual_seed_all(seed)
 
 def check_args(args):
     new_args = args
@@ -88,6 +77,11 @@ def get_CompletionFormer(args):
 
 
 def main():
+    from config import args as args_config
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = args_config.gpus
+    os.environ["MASTER_ADDR"] = args_config.address
+    os.environ["MASTER_PORT"] = args_config.port
     opt = check_args(args_config)
 
     print('\n\n=== Arguments ===')
@@ -98,6 +92,16 @@ def main():
         if (cnt + 1) % 5 == 0:
             print('')
     print('\n')
+
+    # Minimize randomness
+    def init_seed(seed=None):
+        if seed is None:
+            seed = args_config.seed
+
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.cuda.manual_seed_all(seed)
 
     init_seed()
     """
@@ -146,7 +150,7 @@ def main():
     pred = pred.detach().cpu().numpy().astype(np.uint8)
     M, m = np.max(pred), np.min(pred)
     pred = (pred - m) / (M - m) * 255.
-    colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_JET)
+    colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     print(pred)
     cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_depth.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
 
@@ -154,7 +158,7 @@ def main():
     pred_init = pred_init.detach().cpu().numpy().astype(np.uint8)
     M, m = np.max(pred_init), np.min(pred_init)
     pred_init = (pred_init - m) / (M - m) * 255.
-    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_JET)
+    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     print(colored_init)
     cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_init.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
 
@@ -191,7 +195,7 @@ def Args2Results(opt, rgb_file=None, fix_mask=None, new_path=True):
     pred = pred.detach().cpu().numpy().astype(np.uint8)
     M, m = np.max(pred), np.min(pred)
     pred = (pred - m) / (M - m) * 255.
-    colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_JET)
+    colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     print(pred)
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, 'pred_depth.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, 'colored_pred_depth.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
@@ -200,7 +204,7 @@ def Args2Results(opt, rgb_file=None, fix_mask=None, new_path=True):
     pred_init = pred_init.detach().cpu().numpy().astype(np.uint8)
     M, m = np.max(pred_init), np.min(pred_init)
     pred_init = (pred_init - m) / (M - m) * 255.
-    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_JET)
+    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     print(colored_init)
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, 'colored_pred_init.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
 
