@@ -15,7 +15,7 @@ os.environ["MASTER_PORT"] = args_config.port
 from torch import nn
 from torch.nn.functional import interpolate as Inter
 torch.autograd.set_detect_anomaly(True)
-import utility
+
 from model.completionformer import CompletionFormer
 
 torch.backends.cudnn.deterministic = True
