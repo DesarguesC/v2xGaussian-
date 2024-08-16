@@ -182,7 +182,8 @@ def Args2Results(opt, rgb_file=None, fix_mask=None, new_path=True, extra_name='f
     depth = Inter(torch.tensor(depth, dtype=torch.float32), size=dep_size, mode="bilinear")
 
 
-    # carved_image & (1-fg_mask)*pcd_depth
+    # TODO -> Currently: carved_image & pcd_depth
+    # TODO -> Compared with: carved_image & (1-fg_mask)*pcd_depth
     sample = {
         'rgb': rgb.cuda(),  # torch.Tensor[1, 3, H, W]
         'dep': depth.cuda()  # torch.Tensor[1, 1, H, W]

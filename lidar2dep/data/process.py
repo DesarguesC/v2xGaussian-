@@ -93,21 +93,15 @@ def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic
 
     renderer.setup_camera(K_matrix, A, K_dict['width'], K_dict['height'])
     pcd_img = np.asarray(renderer.render_to_depth_image())
-    # TODO: check if this multiplication is need
-
-
-    # Shape[H W]
-
     # Standard Nom First
     # depth_image = (depth_image - np.mean(depth_image)) / np.std(depth_image)
 
     # Max-Min Norm
+    # TODO -> Change Here !
     # if fix_mask is not None: pcd_img = pcd_img * (1. - fix_mask[:, :, 0])
     # pcd_img: [H W], fix_mask: [H W 3]
     M, m  = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255.
-
-
 
     colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     cv2.imwrite(os.path.join(depth_path, 'projected_pcd.jpg'), cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
