@@ -51,13 +51,12 @@ def create_former_input(
     }
 
 
-
-
 # pcd is namely the sparse depth ?
-def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic_path, lidar_lines=64, return_tensor=True):
+def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic_path, fix_mask=None, lidar_lines=64, return_tensor=True):
     # L109 -> L247 -> L91, L285
-
+    # Note the 'depth_path' only related to saving directory
     # TODO: read camera intrinsics
+    if fix_mask is not None: assert not isinstance(rgb_file_path, str)
     with open(intrinsic_path) as f:
         intrinsics = json.load(f)
     cam_D, cam_K = intrinsics['cam_D'], intrinsics['cam_K']
@@ -79,21 +78,11 @@ def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic
 
     keep_ratio = (lidar_lines / 64.0)
     assert keep_ratio >=0 and keep_ratio <= 1.0, keep_ratio
-    # if keep_ratio >= 0.9999:
-    #         pass
-    # elif keep_ratio > 0:
-    #     Km = np.eye(3)
-    #     Km[0, 0] = K[0]
-    #     Km[1, 1] = K[1]
-    #     Km[0, 2] = K[2]
-    #     Km[1, 2] = K[3]
-    #     depth = sample_lidar_lines(depth[:, :, None], intrinsics=Km, keep_ratio=keep_ratio)[:, :, 0]
-    # else:
-    #     depth = np.zeros_like(depth)
 
 
     # TODO: 找到rgb图片视角下的pcd渲染出的sparse depth
-    rgb_image = Image.open(rgb_file_path)
+    rgb_image = Image.open(rgb_file_path) if isinstance(rgb_file_path, str) else \
+                    rgb_file_path if isinstance(rgb_file_path, Image) else Image.fromarray(rgb_file_path)
     pcd_file = o3d.io.read_point_cloud(pcd_file_path)
 
 
@@ -116,6 +105,7 @@ def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic
     # Max-Min Norm
     M, m  = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255.
+    if fix_mask is not None: depth_image = depth_image * fix_mask
 
     colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_JET)
     cv2.imwrite(os.path.join(depth_path, 'projected_pcd.jpg'), cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))

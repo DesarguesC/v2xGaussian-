@@ -15,6 +15,7 @@ from gs_renderer import Renderer, MiniCam
 
 from grid_put import mipmap_linear_grid_put_2d
 from mesh import Mesh, safe_normalize
+from lidar2dep.config import Get_Merged_Args
 
 class GUI:
     def __init__(self, opt):
@@ -896,7 +897,8 @@ class GUI:
         # save
         self.save_model(mode='model')
         self.save_model(mode='geo+tex')
-        
+
+
 
 if __name__ == "__main__":
     import argparse
@@ -906,8 +908,12 @@ if __name__ == "__main__":
     parser.add_argument("--config", required=True, help="path to the yaml config file")
     args, extras = parser.parse_known_args()
 
+
+
     # override default config from cli
     opt = OmegaConf.merge(OmegaConf.load(args.config), OmegaConf.from_cli(extras))
+    all_args = Get_Merged_Args(parser.parse_args())
+
 
     gui = GUI(opt)
 

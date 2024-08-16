@@ -159,6 +159,52 @@ def main():
     cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_init.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
 
 
+def Args2Results(opt, rgb_file=None, fix_mask=None, new_path=True):
+    I_dict = pre_read(
+            opt.depth_path, opt.rgb_file_path if rgb_file is None else rgb_file,
+            opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path, fix_mask=fix_mask)
+    net = get_CompletionFormer(opt)
+    rgb, depth, K = I_dict['rgb'], I_dict['dep'], I_dict['K']
+    # K: intrinsic matrix -> torch.Tensor[3 3]
+    if len(rgb.shape) <= 3:
+        rgb = rgb.unsqueeze(0)
+    if len(depth.shape) <= 3:
+        depth = depth.unsqueeze(0)
+
+    assert len(rgb.shape) == 4 and len(depth.shape) == 4, f'rgb.shape = {rgb.shape}, dep.shape = {depth.shape}'
+    rgb_size = get_new_size(rgb.shape)
+    dep_size = get_new_size(depth.shape)
+    rgb = Inter(torch.tensor(rgb, dtype=torch.float32), size=rgb_size, mode="bilinear")
+    depth = Inter(torch.tensor(depth, dtype=torch.float32), size=dep_size, mode="bilinear")
+
+    sample = {
+        'rgb': rgb.cuda(),  # torch.Tensor[1, 3, H, W]
+        'dep': depth.cuda()  # torch.Tensor[1, 1, H, W]
+    }
+
+    out = net(sample)
+    # use: pdb
+    # TODO: check data format
+
+    print(out)
+    pred = out['pred'].squeeze()  # [1 1 H W]
+    pred = pred.detach().cpu().numpy().astype(np.uint8)
+    M, m = np.max(pred), np.min(pred)
+    pred = (pred - m) / (M - m) * 255.
+    colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_JET)
+    print(pred)
+    cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, 'pred_depth.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, 'colored_pred_depth.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
+
+    pred_init = out['pred_init'].squeeze()
+    pred_init = pred_init.detach().cpu().numpy().astype(np.uint8)
+    M, m = np.max(pred_init), np.min(pred_init)
+    pred_init = (pred_init - m) / (M - m) * 255.
+    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_JET)
+    print(colored_init)
+    cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, 'colored_pred_init.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
+
+    return colored_pred, colored_init, pred
 
 
 if __name__ == '__main__':
