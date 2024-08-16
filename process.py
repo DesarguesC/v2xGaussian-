@@ -84,16 +84,30 @@ if __name__ == '__main__':
             use_llm=opt.use_llm
         )
 
+        _, _, carved_image_fg = FG_remove_All(
+            opt=opt, img=image, mask = 1.-mask,
+            preloaded_seem_detector=preloaded_seem_detector, preloaded_lama_dict=preloaded_lama_dict,
+            use_llm=opt.use_llm
+        )
+
         mask, res, carved_image = np.uint8(mask), np.uint8(res), np.uint8(carved_image)
         # TODO: save intermediate results
         cv2.imwrite(os.path.join(opt.results, 'remove/mask.jpg'), cv2.cvtColor(mask, cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, 'remove/res.jpg'), cv2.cvtColor(res, cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, 'remove/removed.jpg'), cv2.cvtColor(carved_image, cv2.COLOR_RGB2BGR))
 
-        colored_pred, colored_init, pred = Args2Results(opt, rgb_file=carved_image, fix_mask=mask, new_path=False)
-        print(colored_pred)
-        print(colored_init)
-        print(pred)
+
+        # BackGround
+        colored_pred_bg, colored_init_bg, pred_bg = Args2Results(opt, rgb_file=carved_image, fix_mask=mask, new_path=False, extra_name='bg')
+        # ForeGround
+        colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=np.array(image)*mask, fix_mask=1.-mask, new_path=False, extra_name='fg')
+        # colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=carved_image_fg, fix_mask=1. - mask, new_path=False, extra_name='fg')
+
+
+
+        print(colored_pred_bg, colored_pred_fg)
+        print(colored_init_bg, colored_init_fg)
+        print(pred_bg, pred_fg)
 
 
 

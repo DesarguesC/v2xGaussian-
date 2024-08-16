@@ -102,7 +102,7 @@ def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic
     # depth_image = (depth_image - np.mean(depth_image)) / np.std(depth_image)
 
     # Max-Min Norm
-    if fix_mask is not None: pcd_img = pcd_img * (1. - fix_mask[:, :, 0])
+    # if fix_mask is not None: pcd_img = pcd_img * (1. - fix_mask[:, :, 0])
     # pcd_img: [H W], fix_mask: [H W 3]
     M, m  = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255.

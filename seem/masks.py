@@ -210,7 +210,7 @@ def FG_remove(opt, img, reftxt = 'Car', preloaded_seem_detector = None, preloade
     return Image.fromarray(res), seg_mask, img_inpainted
 
 def FG_remove_All(
-        opt, img, reftxt = 'Car',
+        opt, img, reftxt = 'Car', mask = None,
         preloaded_seem_detector = None, preloaded_lama_dict = None,
         dilate_kernel_size = 30, use_llm=False # dilate with kernel=30 the best
     ):
@@ -224,50 +224,49 @@ def FG_remove_All(
     img_ori = np.asarray(img).copy()
     img = torch.from_numpy(img_ori).permute(2, 0, 1).cuda()
     # print(f'img.size = {img.size}')
-    visual = Visualizer(img_ori, metadata=metadata)
 
-    data = {"image": img, "height": height, "width": width}
-    data['text'] = reftxt # flexible targets
-    batch_inputs = [data]
+    if mask is not None:
 
-    # predict
-    seem_model.model.metadata = metadata
-    results, mask_box_dict = seem_model.model.evaluate_all(batch_inputs)
-    mask_all, category, masks_list = results[-1]['panoptic_seg']
+        visual = Visualizer(img_ori, metadata=metadata)
+        data = {"image": img, "height": height, "width": width}
+        data['text'] = reftxt # flexible targets
+        batch_inputs = [data]
 
-    assert len(category) == len(masks_list), f'len(category) = {len(category)}, len(masks_list) = {len(masks_list)}'
-    object_mask_list = [{
-        'name': metadata.stuff_classes[category[i]['category_id']],
-        'mask': masks_list[i]
-    } for i in range(len(category))]
+        # predict
+        seem_model.model.metadata = metadata
+        results, mask_box_dict = seem_model.model.evaluate_all(batch_inputs)
+        mask_all, category, masks_list = results[-1]['panoptic_seg']
+        assert len(category) == len(masks_list), f'len(category) = {len(category)}, len(masks_list) = {len(masks_list)}'
+        object_mask_list = [{
+            'name': metadata.stuff_classes[category[i]['category_id']],
+            'mask': masks_list[i]
+        } for i in range(len(category))]
+        for x in object_mask_list:
+            k, v = x['name'], x['mask']
+            print(f'name = <{k}>, mask.shape = <{v.shape}>')
+            # mask -> torch.Tensor
+        if use_llm:
+            agent = get_vehicle_agent(engine='claude-3-haiku-20240307')
+        sure_mask_list = [
+            (x['mask'] * (255. if torch.max(x['mask']) <= 1. else 1.)) for x in object_mask_list if (agent.vehicle_judge_ask(x['name']) if use_llm else reftxt.lower() in x['name'].lower())
+        ]
+        for i in range(len(sure_mask_list)):
+            print(f'mask-i.shape = {sure_mask_list[i].shape}')
+        mm = sure_mask_list[0]
+        print(type(mm))
+        mask_merged, comp = torch.zeros_like(mm), torch.ones_like(mm) * 255.
+        # limit in range [0, 255]
+        for mm in sure_mask_list:
+            uu = mask_merged + mm
+            uu[uu > comp] = 255.
+            mask_merged = uu
+        mask_merged = dilate_mask(mask_merged.detach().cpu().numpy(), dilate_kernel_size)
+        demo = visual.draw_panoptic_seg(mask_all.cpu(), category)  # rgb Image
+        res = demo.get_image()
+    else:
+        res = None
+        mask_merged = mask
 
-    for x in object_mask_list:
-        k, v = x['name'], x['mask']
-        print(f'name = <{k}>, mask.shape = <{v.shape}>')
-        # mask -> torch.Tensor
-
-    if use_llm:
-        agent = get_vehicle_agent(engine='claude-3-haiku-20240307')
-
-    sure_mask_list = [
-        (x['mask'] * (255. if torch.max(x['mask']) <= 1. else 1.)) for x in object_mask_list if (agent.vehicle_judge_ask(x['name']) if use_llm else reftxt.lower() in x['name'].lower())
-    ]
-    for i in range(len(sure_mask_list)):
-        print(f'mask-i.shape = {sure_mask_list[i].shape}')
-    mm = sure_mask_list[0]
-    print(type(mm))
-
-    mask_merged, comp = torch.zeros_like(mm), torch.ones_like(mm) * 255.
-    # limit in range [0, 255]
-    for mm in sure_mask_list:
-        uu = mask_merged + mm
-        uu[uu > comp] = 255.
-        mask_merged = uu
-
-    mask_merged = dilate_mask(mask_merged.detach().cpu().numpy(), dilate_kernel_size)
-
-    demo = visual.draw_panoptic_seg(mask_all.cpu(), category)  # rgb Image
-    res = demo.get_image()
     # mask_merged: [H W]
     img_inpainted = inpaint_img_with_lama(
         img=img_ori, mask=mask_merged, mod=8, device=opt.device, preloaded_lama_remover=preloaded_lama_dict
