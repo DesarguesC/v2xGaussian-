@@ -225,18 +225,17 @@ def FG_remove_All(
     img = torch.from_numpy(img_ori).permute(2, 0, 1).cuda()
     # print(f'img.size = {img.size}')
 
-    if mask is not None:
-
+    if mask is None:
         visual = Visualizer(img_ori, metadata=metadata)
         data = {"image": img, "height": height, "width": width}
         data['text'] = reftxt # flexible targets
         batch_inputs = [data]
-
         # predict
         seem_model.model.metadata = metadata
         results, mask_box_dict = seem_model.model.evaluate_all(batch_inputs)
         mask_all, category, masks_list = results[-1]['panoptic_seg']
         assert len(category) == len(masks_list), f'len(category) = {len(category)}, len(masks_list) = {len(masks_list)}'
+        # TODO: merge masks
         object_mask_list = [{
             'name': metadata.stuff_classes[category[i]['category_id']],
             'mask': masks_list[i]
@@ -264,16 +263,18 @@ def FG_remove_All(
         demo = visual.draw_panoptic_seg(mask_all.cpu(), category)  # rgb Image
         res = demo.get_image()
     else:
+        # pdb.set_trace()
         res = None
-        mask_merged = mask
+        mask_merged = mask[:,:,0].squeeze() # [H W 3] -> [H W]
+        print(mask_merged.shape, mask.shape)
 
     # mask_merged: [H W]
     img_inpainted = inpaint_img_with_lama(
         img=img_ori, mask=mask_merged, mod=8, device=opt.device, preloaded_lama_remover=preloaded_lama_dict
     )  # -> np.array([H W 3]) | cv2.imwrite: cv2.cvtColor(np.uint8(img_inpainted), cv2.COLOR_RGB2BGR)
     mask_merged = repeat(rearrange(mask_merged, 'h w -> h w 1'), 'h w 1 -> h w c', c=3)
-
-    print(f'res.shape = {res.shape}, type(res) = {type(res)}')
+    if res is not None:
+        print(f'res.shape = {res.shape}, type(res) = {type(res)}')
     print(f'mask_merged.shape = {mask_merged.shape}, type(mask_merged) = {type(mask_merged)}')
     print(f'img_inpainted.shape = {img_inpainted.shape}, type(img_inpainted) = {type(img_inpainted)}')
 
