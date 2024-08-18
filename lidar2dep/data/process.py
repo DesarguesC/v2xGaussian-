@@ -102,7 +102,7 @@ def pre_read(
 
     # Max-Min Norm
     # TODO -> Change Here !
-    # if fg_mask is not None: pcd_img = pcd_img * (1. - fg_mask[:, :, 0])
+    if fg_mask is not None: pcd_img = pcd_img * (1. - fg_mask[:, :, 0])
     # pcd_img: [H W], fg_mask: [H W 3]
     M, m  = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255.

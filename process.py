@@ -90,18 +90,18 @@ if __name__ == '__main__':
             use_llm=opt.use_llm
         )
 
-        mask, res, carved_image = np.uint8(mask), np.uint8(res), np.uint8(carved_image)
+        mask, res, carved_image, carved_image_fg = np.uint8(mask), np.uint8(res), np.uint8(carved_image), np.uint8(carved_image_fg)
         # TODO: save intermediate results
         cv2.imwrite(os.path.join(opt.results, 'remove/mask.jpg'), cv2.cvtColor(mask, cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, 'remove/res.jpg'), cv2.cvtColor(res, cv2.COLOR_RGB2BGR))
-        cv2.imwrite(os.path.join(opt.results, 'remove/removed.jpg'), cv2.cvtColor(carved_image, cv2.COLOR_RGB2BGR))
-
+        cv2.imwrite(os.path.join(opt.results, 'remove/removed-bg.jpg'), cv2.cvtColor(carved_image, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(opt.results, 'remove/removed-fg.jpg'), cv2.cvtColor(carved_image_fg, cv2.COLOR_RGB2BGR))
 
         # BackGround
         colored_pred_bg, colored_init_bg, pred_bg = Args2Results(opt, rgb_file=carved_image, fg_mask=mask, new_path=False, extra_name='bg')
         # ForeGround
-        colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=np.array(image)*mask, fg_mask=1.-mask, new_path=False, extra_name='fg')
-        # colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=carved_image_fg, fg_mask=1. - mask, new_path=False, extra_name='fg')
+        # colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=np.array(image)*mask, fg_mask=1.-mask, new_path=False, extra_name='fg')
+        colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=carved_image_fg, fg_mask=1.-mask, new_path=False, extra_name='fg')
 
 
 
