@@ -15,7 +15,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-if __name__ == '__main__':
+def main():
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--path', default="./data/test1.jpg", type=str, help="path to image (png, jpeg, etc.)")
@@ -100,10 +100,16 @@ if __name__ == '__main__':
         # BackGround
         colored_pred_bg, colored_init_bg, pred_bg = Args2Results(opt, rgb_file=carved_image, fg_mask=mask, new_path=False, extra_name='bg')
         # ForeGround
-        # colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=np.array(image)*mask, fg_mask=1.-mask, new_path=False, extra_name='fg')
-        colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=carved_image_fg, fg_mask=1.-mask, new_path=False, extra_name='fg')
+        # colored_pred_fg, colored_init_fg, pred_fg = \
+        #   Args2Results(opt, rgb_file=np.array(image)*mask, fg_mask=1.-mask, new_path=False, extra_name='fg')
+        #   前景没有背景
+        colored_pred_fg, colored_init_fg, pred_fg = \
+            Args2Results(opt, rgb_file=carved_image_fg, fg_mask=1.-mask, new_path=False, extra_name='fg')
+        #   前景使用lama填充背景
 
 
+        colored_pred_all, colored_init, pred = Args2Results(opt, rgb_file=np.array(image), fg_mask=None, new_path=False, extra_name='panoptic')
+        # 不分前背景
 
         print(colored_pred_bg, colored_pred_fg)
         print(colored_init_bg, colored_init_fg)
@@ -114,3 +120,15 @@ if __name__ == '__main__':
 
     print('\nDone.')
 
+    return {
+        'fg': (colored_pred_fg, colored_init_fg, pred_fg),
+        'bg': (colored_pred_bg, colored_init_bg, pred_bg),
+        'panoptic': (colored_pred_all, colored_init, pred),
+        'args': opt
+    }
+
+
+
+
+if __name__ == '__main__':
+    _ = main()

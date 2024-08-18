@@ -27,6 +27,14 @@ def read_calib_file(filepath):
 
     return data
 
+
+def fix_pcd(image, mask): # mask: fg-mask -> cars
+    u = torch.tensor(image, dtype=torch.float32)
+    u[torch.tensor(mask, dtype=torch.bool)] = 1.
+    assert torch.sum(u*mask - mask).item() == 0, torch.sum(u*mask - mask)
+    return np.array(u)
+
+
 def create_former_input(
         rgb_np_img: np.ndarray,
         pcd_np_img:np.ndarray,
@@ -102,7 +110,14 @@ def pre_read(
 
     # Max-Min Norm
     # TODO -> Change Here !
-    if fg_mask is not None: pcd_img = pcd_img * (1. - fg_mask[:, :, 0])
+    if fg_mask is not None:
+        try:
+            fix_pcd(pcd_img, fg_mask)
+        except Exception as err:
+            print(f'err: {err}')
+            pdb.set_trace()
+
+    # 把mask部分的pcd点抹去，应该是把mask到的部分变白
     # pcd_img: [H W], fg_mask: [H W 3]
     M, m  = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255.
