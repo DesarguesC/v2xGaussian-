@@ -6,10 +6,10 @@ path_list = [
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/mask.jpg',
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/res.jpg',
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/removed.jpg', 
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/projected_pcd-fg.jpg',
+    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd-fg.jpg',
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_depth-fg.jpg',
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_init-fg.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/projected_pcd-bg.jpg',
+    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd-bg.jpg',
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_depth-bg.jpg',
     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_init-bg.jpg'
 ]

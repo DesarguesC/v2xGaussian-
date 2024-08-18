@@ -166,7 +166,8 @@ def main():
 def Args2Results(opt, rgb_file=None, fix_mask=None, new_path=True, extra_name='fg'):
     I_dict = pre_read(
             opt.depth_path, opt.rgb_file_path if rgb_file is None else rgb_file,
-            opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path, fix_mask=fix_mask)
+            opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path, fix_mask=fix_mask, extra_name=extra_name)
+    assert os.path.exists(opt.depth_path), opt.depth_path
     net = get_CompletionFormer(opt)
     rgb, depth, K = I_dict['rgb'], I_dict['dep'], I_dict['K']
     # K: intrinsic matrix -> torch.Tensor[3 3]

@@ -52,7 +52,11 @@ def create_former_input(
 
 
 # pcd is namely the sparse depth ?
-def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic_path, fix_mask=None, lidar_lines=64, return_tensor=True):
+def pre_read(
+        depth_path, rgb_file_path, pcd_file_path,
+        intrinsic_path, extrinsic_path, fix_mask=None,
+        extra_name='fg', lidar_lines=64, return_tensor=True
+):
     # L109 -> L247 -> L91, L285
     # Note the 'depth_path' only related to saving directory
     # TODO: read camera intrinsics
@@ -104,7 +108,7 @@ def pre_read(depth_path, rgb_file_path, pcd_file_path, intrinsic_path, extrinsic
     depth_image = (pcd_img - m) / (M - m) * 255.
 
     colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
-    cv2.imwrite(os.path.join(depth_path, 'projected_pcd.jpg'), cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(os.path.join(depth_path, f'projected_pcd-{extra_name}.jpg'), cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
 
     sampled_depth = sample_lidar_lines(
         depth_map = depth_image, intrinsics = K_matrix, keep_ratio=keep_ratio
