@@ -54,13 +54,13 @@ def create_former_input(
 # pcd is namely the sparse depth ?
 def pre_read(
         depth_path, rgb_file_path, pcd_file_path,
-        intrinsic_path, extrinsic_path, fix_mask=None,
+        intrinsic_path, extrinsic_path, fg_mask=None,
         extra_name='fg', lidar_lines=64, return_tensor=True
 ):
     # L109 -> L247 -> L91, L285
     # Note the 'depth_path' only related to saving directory
     # TODO: read camera intrinsics
-    if fix_mask is not None: assert not isinstance(rgb_file_path, str)
+    if fg_mask is not None: assert not isinstance(rgb_file_path, str)
     with open(intrinsic_path) as f:
         intrinsics = json.load(f)
     cam_D, cam_K = intrinsics['cam_D'], intrinsics['cam_K']
@@ -102,8 +102,8 @@ def pre_read(
 
     # Max-Min Norm
     # TODO -> Change Here !
-    # if fix_mask is not None: pcd_img = pcd_img * (1. - fix_mask[:, :, 0])
-    # pcd_img: [H W], fix_mask: [H W 3]
+    # if fg_mask is not None: pcd_img = pcd_img * (1. - fg_mask[:, :, 0])
+    # pcd_img: [H W], fg_mask: [H W 3]
     M, m  = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255.
 

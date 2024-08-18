@@ -98,10 +98,10 @@ if __name__ == '__main__':
 
 
         # BackGround
-        colored_pred_bg, colored_init_bg, pred_bg = Args2Results(opt, rgb_file=carved_image, fix_mask=mask, new_path=False, extra_name='bg')
+        colored_pred_bg, colored_init_bg, pred_bg = Args2Results(opt, rgb_file=carved_image, fg_mask=mask, new_path=False, extra_name='bg')
         # ForeGround
-        colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=np.array(image)*mask, fix_mask=1.-mask, new_path=False, extra_name='fg')
-        # colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=carved_image_fg, fix_mask=1. - mask, new_path=False, extra_name='fg')
+        colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=np.array(image)*mask, fg_mask=1.-mask, new_path=False, extra_name='fg')
+        # colored_pred_fg, colored_init_fg, pred_fg = Args2Results(opt, rgb_file=carved_image_fg, fg_mask=1. - mask, new_path=False, extra_name='fg')
 
 
 
