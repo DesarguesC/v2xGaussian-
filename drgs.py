@@ -12,7 +12,7 @@ except ImportError:
     TENSORBOARD_FOUND = False
 
 from argparse import ArgumentParser, Namespace
-import drgs_utils
+
 
 """
 
@@ -62,9 +62,95 @@ def prepare_output_and_logger(args):
     return tb_writer
 
 
-def train_DRGS(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint,
+from drgs_utils import *
+
+
+def Reporter(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene: Scene, renderFunc,
+                    renderArgs, txt_path=None):
+    if tb_writer:
+        tb_writer.add_scalar('train_loss_patches/l1_loss', Ll1.item(), iteration)
+        tb_writer.add_scalar('train_loss_patches/total_loss', loss.item(), iteration)
+        tb_writer.add_scalar('iter_time', elapsed, iteration)
+
+    # Report test and samples of training set
+    if iteration in testing_iterations:
+        torch.cuda.empty_cache()
+        validation_configs = ({'name': 'test', 'cameras': scene.getTestCameras()},
+                              {'name': 'train',
+                               'cameras': [scene.getTrainCameras()[idx % len(scene.getTrainCameras())] for idx in
+                                           range(5, 30, 5)]})
+
+        for config in validation_configs:
+            if config['cameras'] and len(config['cameras']) > 0:
+                l1_test = 0.0
+                psnr_test, ssim_test, lpips_test = 0.0, 0.0, 0.0
+                for idx, viewpoint in enumerate(config['cameras']):
+                    render_pkg = renderFunc(viewpoint, scene.gaussians, *renderArgs)
+                    image = torch.clamp(render_pkg["render"], 0.0, 1.0)
+                    depth = render_pkg['depth']
+
+                    gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
+                    if tb_writer and (idx < 5):
+                        tb_writer.add_images(config['name'] + "_view_{}/render".format(viewpoint.image_name),
+                                             image[None], global_step=iteration)
+                        if iteration == testing_iterations[0]:
+                            tb_writer.add_images(config['name'] + "_view_{}/ground_truth".format(viewpoint.image_name),
+                                                 gt_image[None], global_step=iteration)
+                    # [Taekkii-HARDCODING] Save images.
+                    if txt_path is not None and config['name'] == 'test':
+                        elements = txt_path.split("/")
+                        elements = elements[:-1]
+                        render_path = os.path.join(*elements, f"render_{iteration:05d}")
+                        os.makedirs(render_path, exist_ok=True)
+                        render_image_path = os.path.join(render_path, f"{idx:03d}_render.png")
+                        gt_image_path = os.path.join(render_path, f"{idx:03d}_gt.png")
+                        torchvision.utils.save_image(image, render_image_path)
+                        torchvision.utils.save_image(gt_image, gt_image_path)
+
+                        # depth.
+                        depth_path = os.path.join(render_path, f"{idx:03d}_depth.png")
+                        depth = ((depth_colorize_with_mask(depth.cpu().numpy()[None])).squeeze() * 255.0).astype(
+                            np.uint8)
+                        cv2.imwrite(depth_path, depth[:, :, ::-1])
+
+                    l1_test += l1_loss(image, gt_image).mean().double()
+                    psnr_test += psnr(image, gt_image).mean().double()
+                    ssim_test += ssim(image, gt_image).mean().double()
+                    lpips_test += lpips(image, gt_image).mean().double()
+                psnr_test /= len(config['cameras'])
+                ssim_test /= len(config['cameras'])
+                lpips_test /= len(config['cameras'])
+                l1_test /= len(config['cameras'])
+                print(
+                    f"[ITER {iteration}] Evaluating {config['name']}: L1 {l1_test:.6f} PSNR {psnr_test:.2f}")  # SSIM {ssim_test:.4f} LPIPS {lpips_test:.4f}")
+                if config['name'] == 'test':
+                    with open(txt_path, "a") as fp:
+                        print(f"{iteration}_{psnr_test:.6f}_{ssim_test:.6f}_{lpips_test:.6f}", file=fp)
+
+                if tb_writer:
+                    tb_writer.add_scalar(config['name'] + '/loss_viewpoint - l1_loss', l1_test, iteration)
+                    tb_writer.add_scalar(config['name'] + '/loss_viewpoint - psnr', psnr_test, iteration)
+                    tb_writer.add_scalar(config['name'] + '/loss_viewpoint - ssim', ssim_test, iteration)
+                    tb_writer.add_scalar(config['name'] + '/loss_viewpoint - lpips', lpips_test, iteration)
+
+        if tb_writer:
+            # tb_writer.add_histogram("scene/opacity_histogram", scene.gaussians.get_opacity, iteration)
+            tb_writer.add_scalar('total_points', scene.gaussians.get_xyz.shape[0], iteration)
+        torch.cuda.empty_cache()
+
+
+def create_params(parser):
+    lp = ModelParams(parser)
+    op = OptimizationParams(parser)
+    pp = PipelineParams(parser)
+    return lp.extract(parser), op.extract(parser), pp.extract(parser)
+
+
+def train_DRGS(parser, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint,
              debug_from, usedepth=False, usedepthReg=False):
     # {lp.extract(args), op.extract(args), pp.extract(args)} -> {dataset, opt, pipe} -> 都是传参数成员的
+    dataset, opt, pipe = create_params(parser)
+
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree)
@@ -73,6 +159,8 @@ def train_DRGS(dataset, opt, pipe, testing_iterations, saving_iterations, checkp
     if checkpoint:
         (model_params, first_iter) = torch.load(checkpoint)
         gaussians.restore(model_params, opt)
+
+    # TODO: find where to read camera intrinsics/extrinsics, amend them respectively.
 
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
     background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
@@ -136,7 +224,7 @@ def train_DRGS(dataset, opt, pipe, testing_iterations, saving_iterations, checkp
         if usedepth and viewpoint_cam.original_depth is not None:
             depth_mask = (viewpoint_cam.original_depth > 0)  # render_pkg["acc"][0]
             gt_maskeddepth = (viewpoint_cam.original_depth * depth_mask).cuda()
-            if args.white_background:  # for 360 datasets ...
+            if parser.white_background:  # for 360 datasets ...
                 gt_maskeddepth = normalize_depth(gt_maskeddepth)
                 depth = normalize_depth(depth)
 
@@ -165,9 +253,9 @@ def train_DRGS(dataset, opt, pipe, testing_iterations, saving_iterations, checkp
 
             if iteration % 100 == 0:
                 if iteration > opt.min_iters and ema_depthloss_for_log > prev_depthloss:
-                    training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
+                    Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
                                     [iteration], scene, render,
-                                    (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
+                                    (pipe, background), txt_path=os.path.join(parser.model_path, "metric.txt"))
                     scene.save(iteration)
                     print(f"!!! Stop Point: {iteration} !!!")
                     break
@@ -178,9 +266,9 @@ def train_DRGS(dataset, opt, pipe, testing_iterations, saving_iterations, checkp
                 progress_bar.close()
 
             # Log and save
-            training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
+            Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
                             testing_iterations, scene, render,
-                            (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
+                            (pipe, background), txt_path=os.path.join(parser.model_path, "metric.txt"))
             if (iteration in saving_iterations):
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
@@ -215,13 +303,35 @@ def train_DRGS(dataset, opt, pipe, testing_iterations, saving_iterations, checkp
 
 
 
+def parser_add(parser=None):
+    if parser is None:
+        parser = ArgumentParser(description="Training script parameters")
 
+    parser.add_argument('--ip', type=str, default="127.0.0.1")
+    parser.add_argument('--port', type=int, default=6009)
+    parser.add_argument('--debug_from', type=int, default=-1)
+    parser.add_argument('--detect_anomaly', action='store_true', default=False)
+    parser.add_argument("--test_iterations", nargs="+", type=int,
+                        default=[30_000])  # default=([1, 250, 500,]+ [i*1000 for i in range(1,31)]))
+    parser.add_argument("--save_iterations", nargs="+", type=int, default=[30_000])
+    parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
+    parser.add_argument("--start_checkpoint", type=str, default=None)
+    parser.add_argument("--depth", action="store_true")
+    parser.add_argument("--usedepthReg", action="store_true")
+
+    return parser
 
 
 
 
 def main():
+
     processed_dict = process_first()
+    parser = processed_dict['parser']
+    parser = parser_add(parser)
+    train_DRGS(parser,)
+
 
 
 

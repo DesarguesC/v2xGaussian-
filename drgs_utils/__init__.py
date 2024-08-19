@@ -17,15 +17,32 @@ sys.path.append(os.path.join(ab_path, 'drgs_utils'))
 #
 
 from argparse import ArgumentParser, Namespace
-import sys
-import os
+import sys, os, matplotlib
+import numpy as np
 
 from gaussian_renderer import render, network_gui
 from scene import Scene, GaussianModel
+from utils.loss_utils import l1_loss, l2_loss, nearMean_map, ssim
+from utils.image_utils import normalize_depth, psnr
+from lpipsPyTorch import lpips
 
 
+def depth_colorize_with_mask(depthlist, background=(0, 0, 0), dmindmax=None):
+    """ depth: (H,W) - [0 ~ 1] / mask: (H,W) - [0 or 1]  -> colorized depth (H,W,3) [0 ~ 1] """
+    batch, vx, vy = np.where(depthlist != 0)
+    if dmindmax is None:
+        valid_depth = depthlist[batch, vx, vy]
+        dmin, dmax = valid_depth.min(), valid_depth.max()
+    else:
+        dmin, dmax = dmindmax
 
+    norm_dth = np.ones_like(depthlist) * dmax  # [B, H, W]
+    norm_dth[batch, vx, vy] = (depthlist[batch, vx, vy] - dmin) / (dmax - dmin)
 
+    final_depth = np.ones(depthlist.shape + (3,)) * np.array(background).reshape(1, 1, 1, 3)  # [B, H, W, 3]
+    final_depth[batch, vx, vy] = matplotlib.cm.get_cmap('jet_r')(norm_dth)[batch, vx, vy, :3]
+
+    return final_depth
 
 
 class GroupParams:

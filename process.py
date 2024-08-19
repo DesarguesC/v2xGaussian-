@@ -124,7 +124,8 @@ def process_first():
         'fg': (colored_pred_fg, colored_init_fg, pred_fg),
         'bg': (colored_pred_bg, colored_init_bg, pred_bg),
         'panoptic': (colored_pred_all, colored_init, pred),
-        'args': opt
+        'args': opt,
+        'parser': parser
     }
 
 
