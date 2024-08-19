@@ -17,9 +17,6 @@ memory_test.txt
 *.ipynb
 models/
 
-diff-gaussian-rasterization/
-submodules/*
-
 
 
 *.csv
