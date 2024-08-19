@@ -12,7 +12,8 @@ pip install git+https://github.com/ashawkey/kiuikit.git && \
 pip install git+https://github.com/bytedance/MVDream
 pip install git+https://github.com/bytedance/ImageDream/#subdirectory=extern/ImageDream && \
 pip install git+https://github.com/MaureenZOU/detectron2-xyz.git && \
-pip install -e git+https://github.com/DesarguesC/kornia@master#egg=kornia
+pip install -e git+https://github.com/DesarguesC/kornia@master#egg=kornia && \
+pip install git+https://github.com/facebookresearch/pytorch3d.git
 ```
 
 
@@ -49,6 +50,13 @@ cd ../ && git clone -b main https://github.com/open-mmlab/mmsegmentation.git
 cd mmsegmentation
 pip install -v -e .
 ```
+
+## DRGS
+```bash
+pip install -e submodules/diff-gaussian-rasterization-depth-acc
+```
+
+
 Note that when install "apex", there is probably encountered with an error "cannot import name 'container_abcs' from 'torch._six'", 
 which can be solved by directly amend the file where import error occurred.
 
