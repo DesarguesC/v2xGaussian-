@@ -29,6 +29,7 @@ def read_calib_file(filepath):
 
 
 def fix_pcd(image, mask): # mask: fg-mask -> cars
+    if mask is None: return image
     u = torch.tensor(image, dtype=torch.float32)
     u[torch.tensor(mask, dtype=torch.bool)] = 1.
     assert torch.sum(u*mask - mask).item() == 0, torch.sum(u*mask - mask)
@@ -101,6 +102,7 @@ def pre_read(
     renderer = o3d.visualization.rendering.OffscreenRenderer(K_dict['width'], K_dict['height'])
     material = o3d.visualization.rendering.MaterialRecord()
     material.point_size = 5
+    material.shader = 'unlit' # maintain original colors
     renderer.scene.add_geometry("point_cloud", pcd_file, material)
 
     renderer.setup_camera(K_matrix, A, K_dict['width'], K_dict['height'])
