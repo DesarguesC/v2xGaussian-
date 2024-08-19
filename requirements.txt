@@ -43,6 +43,11 @@ timm==0.4.12
 albumentations==0.4.3
 webdataset==0.2.35
 
+# drgs
+plyfile==1.0.3
+pytorch3d==0.7.5
+
+
 # As in README.md
 # mmcv-full==1.4.4
 # mmsegmentation==0.22.1
