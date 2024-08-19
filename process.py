@@ -15,7 +15,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-def main():
+def process_first():
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--path', default="./data/test1.jpg", type=str, help="path to image (png, jpeg, etc.)")
@@ -131,4 +131,4 @@ def main():
 
 
 if __name__ == '__main__':
-    _ = main()
+    _ = process_first()
