@@ -28,14 +28,6 @@ def read_calib_file(filepath):
     return data
 
 
-def fix_pcd(image, mask): # mask: fg-mask -> cars
-    if mask is None: return image
-    u = torch.tensor(image, dtype=torch.float32)
-    u[torch.tensor(mask, dtype=torch.bool)] = 1.
-    assert torch.sum(u*mask - mask).item() == 0, torch.sum(u*mask - mask)
-    return np.array(u)
-
-
 def create_former_input(
         rgb_np_img: np.ndarray,
         pcd_np_img:np.ndarray,
@@ -59,6 +51,15 @@ def create_former_input(
         'K_matrix': torch.Tensor(camera_intrinsic)
     }
 
+
+def fix_pcd(image, mask): # mask: fg-mask -> cars
+    # image: [H W], mask: [H W 3]
+    if mask is None: return image
+    if len(mask.shape) > 2: mask = mask[:,:,0]
+    u = torch.tensor(image, dtype=torch.float32)
+    u[torch.tensor(mask, dtype=torch.bool)] = 1.
+    assert torch.sum(u*mask - mask).item() == 0, torch.sum(u*mask - mask)
+    return np.array(u)
 
 # pcd is namely the sparse depth ?
 def pre_read(
