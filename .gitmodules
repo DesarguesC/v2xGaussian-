@@ -1,6 +1,9 @@
 [submodule "submodules/diff-gaussian-rasterization-depth-acc"]
 	path = submodules/diff-gaussian-rasterization-depth-acc
 	url = https://github.com/robot0321/diff-gaussian-rasterization-depth-acc.git
+[submodule "submodules/diff-gaussian-rasterization"]
+    path = submodules/diff-gaussian-rasterization
+    url = https://github.com/ashawkey/diff-gaussian-rasterization.git
 [submodule "submodules/simple-knn"]
 	path = submodules/simple-knn
 	url = https://gitlab.inria.fr/bkerbl/simple-knn.git
