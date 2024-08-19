@@ -18,7 +18,7 @@ memory_test.txt
 models/
 
 diff-gaussian-rasterization/
-
+submodules/*
 
 
 
