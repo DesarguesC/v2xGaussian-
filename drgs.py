@@ -160,7 +160,9 @@ def train_DRGS(parser, testing_iterations, saving_iterations, checkpoint_iterati
         (model_params, first_iter) = torch.load(checkpoint)
         gaussians.restore(model_params, opt)
 
-    # TODO: find where to read camera intrinsics/extrinsics, amend them respectively.
+    # TODO-1: find where to read camera intrinsics/extrinsics, amend them respectively.
+    # TODO-2: original dataset pre stored multi-views, while we only sample two views.
+    # TODO-3: improve depth rasterization, depth & mask optimization
 
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
     background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
