@@ -17,7 +17,7 @@ memory_test.txt
 *.ipynb
 models/
 
-
+submodules/diff-gaussian-rasterization/
 
 *.csv
 planner-curve.jpg
