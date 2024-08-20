@@ -158,11 +158,10 @@ def train_DRGS(args):
     usedepth = args.depth
     usedepthReg = args.usedepthReg
 
-
-
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree)
+    # TODO: ↓ load cameras
     scene = Scene(dataset, gaussians)  # TODO: transport depth&v2x-scene here
     gaussians.training_setup(opt)
     if checkpoint:
