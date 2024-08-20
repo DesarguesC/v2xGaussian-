@@ -23,18 +23,20 @@ from pytorch3d.renderer.cameras import (
 from glob import glob
 from PIL import Image
 from typing import NamedTuple
-from scene.colmap_loader import read_extrinsics_text, read_intrinsics_text, qvec2rotmat, rotmat2qvec, \
+from ..scene.colmap_loader import read_extrinsics_text, read_intrinsics_text, qvec2rotmat, rotmat2qvec, \
     read_extrinsics_binary, read_intrinsics_binary, read_points3D_binary, read_points3D_text
-from utils.graphics_utils import getWorld2View2, focal2fov, fov2focal
+from ..utils.graphics_utils import getWorld2View2, focal2fov, fov2focal
 import numpy as np
 import json
 from pathlib import Path
 from plyfile import PlyData, PlyElement
-from utils.sh_utils import SH2RGB
-from scene.gaussian_model import BasicPointCloud
+from ..utils.sh_utils import SH2RGB
+from ..scene.gaussian_model import BasicPointCloud
 import imageio
 from datetime import datetime
 from tqdm import tqdm
+
+from lidar2dep.dair import DAIR_V2X_C, CooperativeData
 
 class CameraInfo(NamedTuple):
     uid: int
@@ -58,6 +60,23 @@ class SceneInfo(NamedTuple):
     test_cameras: list
     nerf_normalization: dict
     ply_path: str
+
+class Dair_v2x_Info(NamedTuple):
+    # in LiDAR coordinate
+    inf_side_pcd: BasicPointCloud
+    inf_rgb_gt: np.array            # [H W 3]
+    inf_depth: np.array             # [H W] ?
+    veh_side_pcd: BasicPointCloud
+    veh_rgb_gt: np.array            # [H W 3]
+    veh_depth: np.array             # [H W] ?
+
+    inf2veh_matrix: np.array        # [4 4]
+    veh2inf_matrix: ...
+    # 后面来补充
+
+
+
+
 
 def getNerfppNorm(cam_info):
     def get_center_and_diag(cam_centers):
@@ -152,7 +171,7 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, pcd=None, r
             depthmap, depthloss = optimize_depth(source=source_depth, target=depthmap, mask=depthmap>0.0, depth_weight=depth_weight)
             
             import cv2
-            from render import depth_colorize_with_mask
+            from drgs_utils.gaussian_renderer import depth_colorize_with_mask
             
             source, refined = depth_colorize_with_mask(source_depth[None,:,:],dmindmax=(0.0,5.0)).squeeze() , depth_colorize_with_mask(depthmap[None,:,:], dmindmax=(20.0, 130.0)).squeeze() 
             cv2.imwrite(f"debug/{idx:03d}_source.png", (source[:,:,::-1]*255).astype(np.uint8))
@@ -574,13 +593,13 @@ def readColmapSceneInfo(path, images, eval, kshot=1000, seed=0, resolution=4, wh
                            ply_path=ply_path)
     return scene_info
 
-def depth_minmax(depth_name):
-    depths = np.stack(depths)
-    batch, vx, vy = np.where(depths!=0)
-        
-    valid_depth = depths[batch, vx, vy]
-    return valid_depth.min(), valid_depth.max()
-    
+# def depth_minmax(depth_name):
+#     depths = np.stack(depths)
+#     batch, vx, vy = np.where(depths!=0)
+#
+#     valid_depth = depths[batch, vx, vy]
+#     return valid_depth.min(), valid_depth.max()
+#
 
 def readCamerasFromTransforms(path, transformsfile, white_background, extension=".png", use_depth=False):
     cam_infos = []
@@ -647,7 +666,6 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             
     return cam_infos
 
-
 def readNerfSyntheticInfo(path, white_background, eval, extension=".png", use_depth=False):
     print("Reading Training Transforms")
     train_cam_infos = readCamerasFromTransforms(path, "transforms_train.json", white_background, extension, use_depth=use_depth)
@@ -684,7 +702,20 @@ def readNerfSyntheticInfo(path, white_background, eval, extension=".png", use_de
                            ply_path=ply_path)
     return scene_info
 
+def readDairV2XSyntheticInfo(path):
+    # pre-read DAIR-V2X dataset
+    dair = DAIR_V2X_C(path)
+    from random import randint
+    prepared_idx = randint(0,1000)%600 # random
+    pair = CooperativeData(dair[prepared_idx])
+
+
+
+
+
+
 sceneLoadTypeCallbacks = {
     "Colmap": readColmapSceneInfo,
-    "Blender" : readNerfSyntheticInfo
+    "Blender" : readNerfSyntheticInfo,
+    "V2X": readDairV2XSyntheticInfo
 }

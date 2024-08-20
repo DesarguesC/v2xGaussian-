@@ -140,16 +140,25 @@ def Reporter(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iteratio
 
 
 def create_params(parser):
-    lp = ModelParams(parser)
-    op = OptimizationParams(parser)
-    pp = PipelineParams(parser)
+    no_parser = ArgumentParser(description="Training script parameters")
+    lp = ModelParams(no_parser)
+    op = OptimizationParams(no_parser)
+    pp = PipelineParams(no_parser)
     return lp.extract(parser), op.extract(parser), pp.extract(parser)
 
 
-def train_DRGS(parser, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint,
-             debug_from, usedepth=False, usedepthReg=False):
+def train_DRGS(args):
     # {lp.extract(args), op.extract(args), pp.extract(args)} -> {dataset, opt, pipe} -> 都是传参数成员的
-    dataset, opt, pipe = create_params(parser)
+    dataset, opt, pipe = create_params(args)
+    testing_iterations = args.test_iterations
+    saving_iterations = args.save_iterations
+    checkpoint_iterations = args.checkpoint_iterations
+    checkpoint = args.start_checkpoint
+    debug_from = args.debug_from
+    usedepth = args.depth
+    usedepthReg = args.usedepthReg
+
+
 
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
@@ -332,7 +341,7 @@ def main():
     processed_dict = process_first()
     parser = processed_dict['parser']
     parser = parser_add(parser)
-    train_DRGS(parser,)
+    train_DRGS(parser.parse_args(),)
 
 
 
