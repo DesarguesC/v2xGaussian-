@@ -1,5 +1,6 @@
 import os, glob, cv2, argparse, torch, rembg, sys, pdb
 import numpy as np
+import open3d as o3d
 from PIL import Image
 from lidar2dep.config import Get_Merged_Args, get_args_parser
 from lidar2dep.main import Args2Results
@@ -91,7 +92,8 @@ def process_first(
     print(f'files: {files}')
     for file in files:
         rgb_file = file['rgb']
-        pcd_file = file['pcd']
+        pcd_file_path = file['pcd']
+        pcd_file = o3d.io.read_point_cloud(pcd_file_path)
         camera = file['camera']
         extra_name = file['extra']
 
@@ -122,30 +124,43 @@ def process_first(
 
         # BackGround
         colored_pred_bg, colored_init_bg, pred_bg = \
-            Args2Results(opt, rgb_file=carved_image, pcd_file_path=pcd_file, intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'], fg_mask=mask, new_path=False, extra_name=f'{extra_name}-bg')
+            Args2Results(
+                opt, rgb_file=carved_image, pcd_file_path=pcd_file,
+                intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
+                fg_mask=mask, new_path=False, extra_name=f'{extra_name}-bg'
+            )
         # ForeGround
         # colored_pred_fg, colored_init_fg, pred_fg = \
         #   Args2Results(opt, rgb_file=np.array(image)*mask, fg_mask=1.-mask, new_path=False, extra_name='fg')
         #   前景没有背景
         colored_pred_fg, colored_init_fg, pred_fg = \
-            Args2Results(opt, rgb_file=carved_image_fg, pcd_file_path=pcd_file, intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'], fg_mask=1.-mask, new_path=False, extra_name=f'{extra_name}-fg')
+            Args2Results(
+                opt, rgb_file=carved_image_fg, pcd_file_path=pcd_file,
+                intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
+                fg_mask=1.-mask, new_path=False, extra_name=f'{extra_name}-fg'
+            )
         #   前景使用lama填充背景
 
 
-        colored_pred_all, colored_init, pred = Args2Results(opt, rgb_file=np.array(image), pcd_file_path=pcd_file, intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'], fg_mask=None, new_path=False, extra_name='panoptic')
+        colored_pred_all, colored_init, pred = \
+            Args2Results(
+                opt, rgb_file=np.array(image), pcd_file_path=pcd_file,
+                intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
+                fg_mask=None, new_path=False, extra_name='panoptic'
+            )
         # 不分前背景
 
         print(colored_pred_bg, colored_pred_fg)
         print(colored_init_bg, colored_init_fg)
         print(pred_bg, pred_fg)
 
-        pred_depth.append(
-            {
+        pred_depth.append({
+                'depth': {
                 'fg': (colored_pred_fg, colored_init_fg, pred_fg),
                 'bg': (colored_pred_bg, colored_init_bg, pred_bg),
                 'panoptic': (colored_pred_all, colored_init, pred)
-            }
-        )
+                }, 'pcd': pcd_file
+            })
 
     print('\nDone.')
 

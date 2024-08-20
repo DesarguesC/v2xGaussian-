@@ -173,8 +173,8 @@ def Args2Results(
                 pcd_file_path = opt.pcd_file_path if pcd_file_path is None else pcd_file_path,
                 intrinsic = opt.intrinsic_path if intrinsics is None else intrinsics, # {'dict': ..., 'matrix': ...}
                 extrinsic = opt.extrinsic_path if extrinsics is None else extrinsics,
-                fg_mask=None if extra_name=='panoptic' else fg_mask,
-                extra_name=extra_name
+                fg_mask = None if extra_name=='panoptic' else fg_mask,
+                extra_name = extra_name
             )
 
     assert os.path.exists(opt.depth_path), opt.depth_path

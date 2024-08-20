@@ -97,8 +97,8 @@ def pre_read(
         assert isinstance(intrinsic, dict) and extrinsic.squeeze().shape == (4,4)
 
         A = extrinsic # TODO: transfer current coordinates into LiDAR coordinate
-        K_dict = intrinsic['dict']
-        K_matrix = intrinsic['matrix']
+        K_dict = intrinsic['dict'] # For o3d -> camera extrinsic dict
+        K_matrix = intrinsic['matrix'] # array [3 3]
         # intrinsic: {'dict': <Cooperative>.camera_intrinsic, 'matrix': <Cooperative>.camera_intrinsic_matrix}
 
 
@@ -108,7 +108,7 @@ def pre_read(
 
     # TODO: 找到rgb图片视角下的pcd渲染出的sparse depth
     rgb_image = Image.open(rgb_file_path) if isinstance(rgb_file_path, str) else Image.fromarray(rgb_file_path)
-    pcd_file = o3d.io.read_point_cloud(pcd_file_path)
+    pcd_file = o3d.io.read_point_cloud(pcd_file_path) if isinstance(pcd_file_path, str) else pcd_file_path
 
 
     # Off Screen Rendering

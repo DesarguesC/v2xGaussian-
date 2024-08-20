@@ -5,6 +5,9 @@ from random import randint
 import cv2
 import numpy as np
 
+from lidar2dep.dair import DAIR_V2X_C, CooperativeData
+
+
 try:
     from torch.utils.tensorboard import SummaryWriter
     TENSORBOARD_FOUND = True
@@ -147,8 +150,29 @@ def create_params(parser):
     return lp.extract(parser), op.extract(parser), pp.extract(parser)
 
 
-def train_DRGS(args):
-    # {lp.extract(args), op.extract(args), pp.extract(args)} -> {dataset, opt, pipe} -> 都是传参数成员的
+def train_DRGS(args, inf_side_info, veh_side_info):
+    """
+
+    Args:
+        args:
+        inf_side_info:
+        veh_side_info:
+
+        xxx_side_info ->
+        pred_depth[i]:
+            {
+                'depth': {
+                'fg': (colored_pred_fg, colored_init_fg, pred_fg),
+                'bg': (colored_pred_bg, colored_init_bg, pred_bg),
+                'panoptic': (colored_pred_all, colored_init, pred)
+                }, 'pcd': pcd_file # use open3d.io.read_point_cloud(...)
+            }
+
+        -> pred_fg, pred_bg, pred -> uncolored
+
+    Returns:
+
+    """
     dataset, opt, pipe = create_params(args)
     testing_iterations = args.test_iterations
     saving_iterations = args.save_iterations
@@ -336,11 +360,43 @@ def parser_add(parser=None):
 
 
 def main():
+    base_dir = '../'
+    dair = DAIR_V2X_C(base_dir)
+    from random import randint
+    prepared_idx = randint(0, 1000) % 600  # random
+    pair = CooperativeData(dair[prepared_idx], base_dir)
 
-    processed_dict = process_first()
+    processed_dict = process_first(parser = None,dair_item = pair)
+    """
+    {
+        'inf-side': pred_depth[0],
+        'veh-side': pred_depth[1],
+        'args': opt,
+        'parser': parser
+    }
+    
+    
+    xx-side ->
+        pred_depth[i]: 
+            {
+                'depth': {
+                'fg': (colored_pred_fg, colored_init_fg, pred_fg),
+                'bg': (colored_pred_bg, colored_init_bg, pred_bg),
+                'panoptic': (colored_pred_all, colored_init, pred)
+                }, 'pcd': pcd_file # use open3d.io.read_point_cloud(...)
+            }
+    
+    -> pred_fg, pred_bg, pred -> uncolored
+    
+    """
     parser = processed_dict['parser']
+    # {'depth': ..., 'pcd': ...}
+    inf_side = processed_dict['inf-side']
+    veh_side = processed_dict['veh-side']
+
+
     parser = parser_add(parser)
-    train_DRGS(parser.parse_args(),)
+    train_DRGS(parser.parse_args(), inf_side, veh_side)
 
 
 
