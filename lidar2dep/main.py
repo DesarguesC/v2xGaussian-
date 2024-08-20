@@ -163,10 +163,20 @@ def main():
     cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_init.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
 
 
-def Args2Results(opt, rgb_file=None, fg_mask=None, new_path=True, extra_name='fg'):
+def Args2Results(
+        opt, rgb_file = None, pcd_file_path = None,
+        intrinsics = None, extrinsics = None,
+        fg_mask=None, new_path=True, extra_name='fg'):
     I_dict = pre_read(
-            opt.depth_path, opt.rgb_file_path if rgb_file is None else rgb_file,
-            opt.pcd_file_path, opt.intrinsic_path, opt.extrinsic_path, fg_mask=None if extra_name=='panoptic' else fg_mask, extra_name=extra_name)
+                depth_path = opt.depth_path,
+                rgb_file_path = opt.rgb_file_path if rgb_file is None else rgb_file,
+                pcd_file_path = opt.pcd_file_path if pcd_file_path is None else pcd_file_path,
+                intrinsic = opt.intrinsic_path if intrinsics is None else intrinsics, # {'dict': ..., 'matrix': ...}
+                extrinsic = opt.extrinsic_path if extrinsics is None else extrinsics,
+                fg_mask=None if extra_name=='panoptic' else fg_mask,
+                extra_name=extra_name
+            )
+
     assert os.path.exists(opt.depth_path), opt.depth_path
     net = get_CompletionFormer(opt)
     rgb, depth, K = I_dict['rgb'], I_dict['dep'], I_dict['K']

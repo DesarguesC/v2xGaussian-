@@ -64,31 +64,43 @@ def fix_pcd(image, mask): # mask: fg-mask -> cars
 # pcd is namely the sparse depth ?
 def pre_read(
         depth_path, rgb_file_path, pcd_file_path,
-        intrinsic_path, extrinsic_path, fg_mask=None,
+        intrinsic, extrinsic, fg_mask=None,
         extra_name='fg', lidar_lines=64, return_tensor=True
 ):
     # L109 -> L247 -> L91, L285
     # Note the 'depth_path' only related to saving directory
     # TODO: read camera intrinsics
     if fg_mask is not None: assert not isinstance(rgb_file_path, str)
-    with open(intrinsic_path) as f:
-        intrinsics = json.load(f)
-    cam_D, cam_K = intrinsics['cam_D'], intrinsics['cam_K']
-    # cam_D seems useless
-    K_dict = {
-        'height': intrinsics['height'], 'width': intrinsics['width'],
-        'fx': cam_K[0], 'fy': cam_K[4], 'cx': cam_K[2], 'cy': cam_K[5]
-    }
-    K_matrix = np.array(cam_K).reshape((3,3))
 
-    # TODO: read camera extrinsics
-    with open(extrinsic_path) as f:
-        extrinsics = json.load(f)
-    R, T = np.array(extrinsics['rotation']), np.array(extrinsics['translation'])
-    A = np.zeros((4,4))
-    A[0:3, 0:3] = R
-    A[0:3, -1] = np.squeeze(T)
-    A[-1, -1] = 1.
+
+    if intrinsic is not None and extrinsic is not None and isinstance(intrinsic, str) and isinstance(extrinsic, str):
+        with open(intrinsic) as f:
+            intrinsics = json.load(f)
+        cam_D, cam_K = intrinsics['cam_D'], intrinsics['cam_K']
+        # cam_D seems useless
+        K_dict = {
+            'height': intrinsics['height'], 'width': intrinsics['width'],
+            'fx': cam_K[0], 'fy': cam_K[4], 'cx': cam_K[2], 'cy': cam_K[5]
+        }
+        K_matrix = np.array(cam_K).reshape((3,3))
+
+        # TODO: read camera extrinsics
+        with open(extrinsic) as f:
+            extrinsics = json.load(f)
+        R, T = np.array(extrinsics['rotation']), np.array(extrinsics['translation'])
+        A = np.zeros((4,4))
+        A[0:3, 0:3] = R
+        A[0:3, -1] = np.squeeze(T)
+        A[-1, -1] = 1.
+    else:
+        while(len(extrinsic.shape)>2): extrinsic = extrinsic.squeeze()
+        assert isinstance(intrinsic, dict) and extrinsic.squeeze().shape == (4,4)
+
+        A = extrinsic # TODO: transfer current coordinates into LiDAR coordinate
+        K_dict = intrinsic['dict']
+        K_matrix = intrinsic['matrix']
+        # intrinsic: {'dict': <Cooperative>.camera_intrinsic, 'matrix': <Cooperative>.camera_intrinsic_matrix}
+
 
     keep_ratio = (lidar_lines / 64.0)
     assert keep_ratio >=0 and keep_ratio <= 1.0, keep_ratio

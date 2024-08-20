@@ -98,41 +98,58 @@ class DAIR_V2X_C:
         self.config_path = os.path.join(base_dir, 'cooperative/data_info.json')
         with open(self.config_path) as f:
             self.items = json.load(f)
-    def __getitem__(self, idx):
-        return self.items[idx]
+    def __getitem__(self, idx, require_path=False):
+        return self.items[idx] if not require_path else (self.items[idx], self.base_dir)
     def __len__(self):
         return len(self.items)
     
 class CooperativeData:
-    def __init__(self, dair):
+    def __init__(self, dair, path=None):
         # dair: DAIR_V2X_C[idx]
-        assert isinstance(dair, dict)
-        inf_id = re.split('[/\.]', dair['infrastructure_image_path'])[-2]
-        veh_id = re.split('[/\.]', dair['vehicle_image_path'])[-2]
-        self.inf_side_img = cv2.imread(os.path.join('./cooperative-vehicle-infrastructure-infrastructure-side-image', f'{inf_id}.jpg'))
-        # print(os.path.join(BASE_DIR, dair['infrastructure_image_path']))
-        self.height, self.width, _ = self.inf_side_img.shape
-        self.inf_side_pcd = o3d.io.read_point_cloud(os.path.join('./cooperative-vehicle-infrastructure-infrastructure-side-velodyne', f'{inf_id}.jpg'))
-        
-        self.veh_side_img = cv2.imread(os.path.join('cooperative-vehicle-infrastructure-vehicle-side-image', f'{veh_id}.jpg'))
-        self.veh_side_pcd = o3d.io.read_point_cloud(os.path.join('./cooperative-vehicle-infrastructure-vehicle-side-velodyne', f'{veh_id}.jpg'))
-        
-        with open(os.path.join(BASE_DIR, dair['cooperative_label_path'])) as f:
-            self.labels_list = json.load(f) # list of dict
-        
-        self.offset_dict = dair['system_error_offset']
-
-        u = load_camera_intrinsic(os.path.join(f'{BASE_DIR}/infrastructure-side/calib/camera_intrinsic', f'{inf_id}.json'), return_dict=True)
+        if path is None:
+            path = '..'
+        self.inf_id = re.split('[/\.]', dair['infrastructure_image_path'])[-2]
+        self.veh_id = re.split('[/\.]', dair['vehicle_image_path'])[-2]
+        #
+        # self.inf_side_img = cv2.imread(os.path.join('./cooperative-vehicle-infrastructure-infrastructure-side-image', f'{inf_id}.jpg'))
+        # # print(os.path.join(BASE_DIR, dair['infrastructure_image_path']))
+        # self.height, self.width, _ = self.inf_side_img.shape
+        # self.inf_side_pcd = o3d.io.read_point_cloud(os.path.join('./cooperative-vehicle-infrastructure-infrastructure-side-velodyne', f'{inf_id}.jpg'))
+        #
+        # self.veh_side_img = cv2.imread(os.path.join('cooperative-vehicle-infrastructure-vehicle-side-image', f'{veh_id}.jpg'))
+        # self.veh_side_pcd = o3d.io.read_point_cloud(os.path.join('./cooperative-vehicle-infrastructure-vehicle-side-velodyne', f'{veh_id}.jpg'))
+        #
+        # with open(os.path.join(BASE_DIR, dair['cooperative_label_path'])) as f:
+        #     self.labels_list = json.load(f) # list of dict
+        #
+        # self.offset_dict = dair['system_error_offset']
+        #
+        u = load_camera_intrinsic(os.path.join(f'{path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/camera_intrinsic', f'{self.inf_id}.json'), return_dict=True)
         self.camera_intrinsic = u['intrinsic']
         self.inf_ex = u['extrinsic']
         self.camera_intrinsic_matrix = u['intrinsic_matrix']
-        self.veh_ex = load_camera_R(os.path.join(f'{BASE_DIR}/vehicle-side/calib/lidar_to_camera', f'{veh_id}.json'))
+        self.veh_ex = load_camera_R(os.path.join(f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/lidar_to_camera', f'{self.veh_id}.json'))
 
-        # self.camera_extrinsic_inf = 
 
-        # self.camera_intrinsic_veh = load_camera_intrinsic(os.path.join(f'{BASE_DIR}/vehicle-side/calib/camera_intrinsic', f'{veh_id}.json'), return_dict=True)
-        # self.camera_extrinsic_veh = load_camera_extrinsic(os.path.join(f'{BASE_DIR}/vehicle-side/calib/virtuallidar_to_camera', f'{veh_id}.json'))
+        # inf/veh rgb image file path
+        self.inf_img_path = f'{path}/cooperative-vehicle-infrastructure-infrastructure-side-image/{self.inf_id}.jpg'
+        self.veh_img_path = f'{path}/cooperative-vehicle-infrastructure-vehicle-side-image/{self.veh_id}.jpg'
+        self.inf_pcd_path = f'{path}/cooperative-vehicle-infrastructure-infrastructure-side-velodyne/{self.inf_id}.pcd'
+        self.veh_pcd_path = f'{path}/cooperative-vehicle-infrastructure-vehicle-side-velodyne/{self.veh_id}.pcd'
+        # camera intrinsics matrix path
+        self.inf_cam_intrinsic_path = f'{path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/camera_intrinsic/{self.inf_id}.json'
+        self.veh_cam_intrinsic_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/camera_intrinsic/{self.veh_id}.json'
+        # inf/veh lidar2camera transformation matrix path
+        self.inf_lidar2cam_path = f'{path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/virtuallidar_to_camera/{self.inf_id}.json'
+        self.veh_lidar2cam_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/virtuallidar_to_camera/{self.veh_id}.json'
+        # inf lidar2world matrix path
+        self.inf_lidar2world_path = f'{path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/virtuallidar_to_world/{self.inf_id}.json'
+        # veh lidar2world matrix path
+        self.veh_lidar2novatel_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/lidar_to_novatel/{self.veh_id}.json'
+        self.veh_novatel2world_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/novatel_to_world/{self.veh_id}.json'
 
+
+    # PREVIOUS API - <Begin>
     def show_side(self, which='inf'):
         assert which in ['inf', 'veh'], which
         fig = plt.figure()
@@ -186,3 +203,78 @@ class CooperativeData:
             pdb.set_trace()
 
         return side_img, pcd_rendered, depth, weighted_depth
+
+    # PREVIOUS API - <End>
+
+    def load_pcd(sefl, path):
+        pcd = o3d.io.read_point_cloud(path)
+        arr = np.asarray(pcd.points)
+        # print(arr.shape)
+        new_arr = np.ones((arr.shape[0], 4))
+        new_arr[:, 0:3] = arr
+
+        assert new_arr.shape[-1] == 4, new_arr.shape
+        # get a point: arr[:,idx]
+        return pcd, new_arr.T
+
+    def load_intrinsic(self, path):
+        with open(path) as f:
+            ff = json.load(f)
+        height = ff['height']
+        weight = ff['width']
+        cam_K = ff['cam_K']
+        K = np.array([cam_K[0:3], cam_K[3:6], cam_K[6:9]])
+        assert K.shape == (3, 3)
+        return height, weight, K
+
+    def intrinsic2dict(self, h, w, K):
+        return {
+            'height': h,
+            'width': w,
+            'fx': K[0, 0], 'cx': K[0, -1], 'fy': K[1, 1], 'cy': K[1, -1]
+        }
+
+    def load_extrinsic(self, path):
+        # -> [R | t]
+        with open(path) as f:
+            ff = json.load(f)
+        if 'transform' in ff:
+            ff = ff['transform']
+        R, T = np.array(ff['rotation']), np.array(ff['translation'])
+        assert R.shape == (3, 3) and T.shape == (3, 1), f'R.shape = {R.shape}\nT.shape = {T.shape}'
+        trans = np.zeros((4, 4))
+        trans[0:3, 0:3] = R
+        trans[0:3, -1] = np.squeeze(T)
+        trans[-1, -1] = 1.
+        return trans # [4 4] extrinsic matrix
+
+    def load4pcd_render(self, type='inf'):
+        assert type in ['inf', 'veh'], type
+        h, w, K = self.load_intrinsic(getattr(self, f'{type}_cam_intrinsic_path'))
+        intrinsic_dict = self.intrinsic2dict(h, w, K)
+        extrinsic_array = self.load_extrinsic(getattr(self, f'{type}_lidar2cam_path'))
+
+        return {
+                'intrinsic': {
+                    'dict': intrinsic_dict, # intrinsics dict
+                    'matrix': K # [3 3] array
+                    },
+                'extrinsic': extrinsic_array, # [4 4] array
+        }
+
+    # 全都放到world坐标系的方法
+    def ins_side_pcd2world(self):
+        _, ins_pcd_arr = self.load_pcd(self.inf_pcd_path)
+        Trans = self.load_extrinsic(self.inf_lidar2world_path)  # [4 4]
+        pcd_world = Trans @ ins_pcd_arr
+        return pcd_world[0:3, :]
+
+    def veh_side_pcd2world(self):
+        _, veh_pcd_arr = self.load_pcd(self.veh_pcd_path)
+        Trans1 = self.load_extrinsic(self.veh_lidar2novatel_path)
+        Trans2 = self.load_extrinsic(self.veh_novatel2world_path)
+        pcd_world = Trans2 @ Trans1 @ veh_pcd_arr
+        return pcd_world[0:3, :]
+
+
+

@@ -5,7 +5,7 @@ from lidar2dep.config import Get_Merged_Args, get_args_parser
 from lidar2dep.main import Args2Results
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
 from seem.masks import FG_remove, FG_remove_All, preload_seem_detector, preload_lama_remover
-
+from lidar2dep.dair import DAIR_V2X_C, CooperativeData
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -15,9 +15,15 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-def process_first():
+def process_first(
+        parser = None, dair_item: CooperativeData = None
+        # rgb_file_path: list[str] = None, pcd_file_path: list[str] = None,
+        # intrinsic_path: list[str] = None, extrinsic_path: list[str] = None
+):
+    assert dair_item is not None
+    if parser is None:
+        parser = argparse.ArgumentParser()
 
-    parser = argparse.ArgumentParser()
     # parser.add_argument('--path', default="./data/test1.jpg", type=str, help="path to image (png, jpeg, etc.)")
     # parser.add_argument('--model', default='u2net', type=str, help="rembg model, see https://github.com/danielgatis/rembg#models")
     parser.add_argument('--size', default=256, type=int, help="output resolution")
@@ -35,6 +41,13 @@ def process_first():
     parser.add_argument('--results', type=str, default='../v2x-outputs/pre-process/', help='result direction')
     print(f'parser = {parser}')
     opt = get_args_parser(parser=parser)
+
+    # if dair_item is not None:
+    #     opt.rgb_file_path = rgb_file_path
+    #     opt.pcd_file_path = pcd_file_path
+    #     opt.intrinsic_path = intrinsic_path
+    #     opt.extrinsic_path = extrinsic_path
+
     print('Start...')
     """
         create results directions here ↓
@@ -50,32 +63,42 @@ def process_first():
 
     # session = rembg.new_session(model_name=opt.model)
 
-    if os.path.isdir(opt.rgb_file_path):
-        print(f'[INFO] processing directory {opt.rgb_file_path}...')
-        files = glob.glob(f'{opt.rgb_file_path}/*')
-        # out_dir = opt.rgb_file_path
-    else: # isfile
-        files = [opt.rgb_file_path]
-        # out_dir = os.path.dirname(opt.results)
+    # if os.path.isdir(opt.rgb_file_path):
+    #     print(f'[INFO] processing directory {opt.rgb_file_path}...')
+    #     files = glob.glob(f'{opt.rgb_file_path}/*')
+    #     # out_dir = opt.rgb_file_path
+    # else: # isfile
+    #     files = [opt.rgb_file_path]
+    #     # out_dir = os.path.dirname(opt.results)
 
 
     preloaded_seem_detector = preload_seem_detector(opt)
     preloaded_lama_dict = preload_lama_remover(opt)
 
+    files = [
+        {
+            'rgb': dair_item.inf_side_img, 'pcd': dair_item.inf_side_pcd,
+            'camera': dair_item.load4pcd_render(type='inf'), 'extra': 'inf'
+         },
+        {
+            'rgb': dair_item.veh_side_img, 'pcd': dair_item.veh_side_pcd,
+            'camera': dair_item.load4pcd_render(type='veh'), 'extra': 'veh'
+        }
+    ]
+
+    pred_depth = []
 
     print(f'files: {files}')
     for file in files:
+        rgb_file = file['rgb']
+        pcd_file = file['pcd']
+        camera = file['camera']
+        extra_name = file['extra']
 
-        out_base = os.path.basename(file).split('.')[0]
-        out_rgba = os.path.join(opt.results, out_base + '_rgba')
-        cnt = 0
-        while os.path.exists(f'{out_rgba}_{cnt}.png'):
-            cnt += 1
-        out_rgba = f'{out_rgba}_{cnt}.png'
+
         # load image
-        print(f'[INFO] loading image {file}...')
-        # image = cv2.imread(file, cv2.IMREAD_UNCHANGED) # read
-        image = Image.open(file)
+        print(f'[INFO] loading image {rgb_file}...')
+        image = Image.open(rgb_file) # RGB Image
         # TODO: use seem to remove foreground
         print(f'[INFO] background removal...')
         res, mask, carved_image = FG_remove_All(
@@ -92,38 +115,43 @@ def process_first():
 
         mask, res, carved_image, carved_image_fg = np.uint8(mask), np.uint8(res), np.uint8(carved_image), np.uint8(carved_image_fg)
         # TODO: save intermediate results
-        cv2.imwrite(os.path.join(opt.results, 'remove/mask.jpg'), cv2.cvtColor(mask, cv2.COLOR_RGB2BGR))
-        cv2.imwrite(os.path.join(opt.results, 'remove/res.jpg'), cv2.cvtColor(res, cv2.COLOR_RGB2BGR))
-        cv2.imwrite(os.path.join(opt.results, 'remove/removed-bg.jpg'), cv2.cvtColor(carved_image, cv2.COLOR_RGB2BGR))
-        cv2.imwrite(os.path.join(opt.results, 'remove/removed-fg.jpg'), cv2.cvtColor(carved_image_fg, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(opt.results, f'remove/mask-{extra_name}.jpg'), cv2.cvtColor(mask, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(opt.results, f'remove/res-{extra_name}.jpg'), cv2.cvtColor(res, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(opt.results, f'remove/removed-{extra_name}-bg.jpg'), cv2.cvtColor(carved_image, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(os.path.join(opt.results, f'remove/removed-{extra_name}-fg.jpg'), cv2.cvtColor(carved_image_fg, cv2.COLOR_RGB2BGR))
 
         # BackGround
-        colored_pred_bg, colored_init_bg, pred_bg = Args2Results(opt, rgb_file=carved_image, fg_mask=mask, new_path=False, extra_name='bg')
+        colored_pred_bg, colored_init_bg, pred_bg = \
+            Args2Results(opt, rgb_file=carved_image, pcd_file_path=pcd_file, intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'], fg_mask=mask, new_path=False, extra_name=f'{extra_name}-bg')
         # ForeGround
         # colored_pred_fg, colored_init_fg, pred_fg = \
         #   Args2Results(opt, rgb_file=np.array(image)*mask, fg_mask=1.-mask, new_path=False, extra_name='fg')
         #   前景没有背景
         colored_pred_fg, colored_init_fg, pred_fg = \
-            Args2Results(opt, rgb_file=carved_image_fg, fg_mask=1.-mask, new_path=False, extra_name='fg')
+            Args2Results(opt, rgb_file=carved_image_fg, pcd_file_path=pcd_file, intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'], fg_mask=1.-mask, new_path=False, extra_name=f'{extra_name}-fg')
         #   前景使用lama填充背景
 
 
-        colored_pred_all, colored_init, pred = Args2Results(opt, rgb_file=np.array(image), fg_mask=None, new_path=False, extra_name='panoptic')
+        colored_pred_all, colored_init, pred = Args2Results(opt, rgb_file=np.array(image), pcd_file_path=pcd_file, intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'], fg_mask=None, new_path=False, extra_name='panoptic')
         # 不分前背景
 
         print(colored_pred_bg, colored_pred_fg)
         print(colored_init_bg, colored_init_fg)
         print(pred_bg, pred_fg)
 
-
-
+        pred_depth.append(
+            {
+                'fg': (colored_pred_fg, colored_init_fg, pred_fg),
+                'bg': (colored_pred_bg, colored_init_bg, pred_bg),
+                'panoptic': (colored_pred_all, colored_init, pred)
+            }
+        )
 
     print('\nDone.')
 
     return {
-        'fg': (colored_pred_fg, colored_init_fg, pred_fg),
-        'bg': (colored_pred_bg, colored_init_bg, pred_bg),
-        'panoptic': (colored_pred_all, colored_init, pred),
+        'inf-side': pred_depth[0],
+        'veh-side': pred_depth[1],
         'args': opt,
         'parser': parser
     }
