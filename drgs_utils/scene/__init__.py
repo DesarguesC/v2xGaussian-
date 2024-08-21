@@ -18,6 +18,24 @@ from ..scene.gaussian_model import GaussianModel
 from .. import ModelParams
 from ..utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
 from lidar2dep.dair import CooperativeData
+from ..scene.dataset_readers import Dair_v2x_Info, BasicPointCloud
+
+def Bind_v2x_pcd(dair: Dair_v2x_Info) -> BasicPointCloud:
+    # align infrastructure side PCD with vehicle side PCD
+    # TODO: Point Cloud Registration
+    """
+    Infrastructure Side:    lidar-inf-pcd -> world-inf-pcd
+    Vehicle Side:           lidar-veh-pcd -> novatel-veh-pcd -> world-veh-pcd
+
+            =>  Point Clout Registration => △p = [R|t]
+
+    lidar-veh-pcd -> cam-veh-pcd --△p--> cam-inf-pcd
+    """
+
+
+
+    return
+
 
 class Scene:
 
@@ -30,25 +48,21 @@ class Scene:
         self.model_path = dair_item.model_path # dair path
         self.gaussians = gaussians
 
-        self.train_cameras = {}
-        self.test_cameras = {}
+        dair_info = sceneLoadTypeCallbacks['V2X'](dair_item)
 
-        scene_info = sceneLoadTypeCallbacks['V2X'](dair_item)
-        self.cameras_extent = scene_info.nerf_normalization["radius"]
+        """
+            Dair_v2x_Info(
+                inf_pcd=inf_pcd_, veh_pcd=veh_pcd_,
+                inf_rgb=np.array(inf_side_info['rgb']), veh_rgb=np.array(veh_side_info['rgb']),
+                inf_depth=inf_side_info['depth'], veh_depth=veh_side_info['depth'],
+                inf_cam_K={'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': inf_cam_K[2]},
+                veh_cam_K={'h': veh_cam_K[0], 'w': veh_cam_K[1], 'cam_K': veh_cam_K[2]},
+                inf2veh_matrix=inf2veh  # [4 4]
+            )
+        """
 
-        for resolution_scale in resolution_scales:
-            print("Loading Training Cameras")
-            self.train_cameras[resolution_scale] = cameraList_from_camInfos(scene_info.train_cameras, resolution_scale, args)
-            print("Loading Test Cameras")
-            self.test_cameras[resolution_scale] = cameraList_from_camInfos(scene_info.test_cameras, resolution_scale, args)
-                
-        if self.loaded_iter:
-            self.gaussians.load_ply(os.path.join(self.model_path,
-                                                        "point_cloud",
-                                                        "iteration_" + str(self.loaded_iter),
-                                                        "point_cloud.ply"))
-        else:
-            self.gaussians.create_from_pcd(scene_info.point_cloud, self.cameras_extent)
+        self.cameras_extent = scene_info.nerf_normalization["radius"] # 处理好的相机内参
+        self.gaussians.create_from_pcd(Bind_v2x_pcd(dair_info), self.cameras_extent)
 
 
 # , json_cams, self.gaussian.load_ply,

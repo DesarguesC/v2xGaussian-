@@ -718,7 +718,7 @@ def readDairV2XSyntheticInfo(
 ):
     # pre-read DAIR-V2X dataset
     pair = CooperativeData(dair_item)
-    inf_idx, veh_idx = pair.inf_id, pair.veh_id
+    # inf_idx, veh_idx = pair.inf_id, pair.veh_id
 
     inf_cam_K = pair.load_intrinsic(pair.inf_cam_intrinsic_path) # h, w, K[3,3]
     veh_cam_K = pair.load_intrinsic(pair.veh_cam_intrinsic_path) # h, w, K[3,3]
@@ -742,7 +742,7 @@ def readDairV2XSyntheticInfo(
                 inf_depth = inf_side_info['depth'],       veh_depth = veh_side_info['depth'],
                 inf_cam_K = {'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': inf_cam_K[2]},
                 veh_cam_K = {'h': veh_cam_K[0], 'w': veh_cam_K[1], 'cam_K': veh_cam_K[2]},
-                inf2veh_matrix = inf2veh
+                inf2veh_matrix = inf2veh # [4 4]
             )
 
 
