@@ -17,54 +17,23 @@ from ..scene.dataset_readers import sceneLoadTypeCallbacks
 from ..scene.gaussian_model import GaussianModel
 from .. import ModelParams
 from ..utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
+from lidar2dep.dair import CooperativeData
 
 class Scene:
 
     gaussians : GaussianModel
 
-    def __init__(self, args : ModelParams, gaussians : GaussianModel, load_iteration=None, shuffle=True, resolution_scales=[1.0]):
+    def __init__(self, dair_item: CooperativeData, gaussians : GaussianModel, inf_side_info: dict=None, veh_side_info: dict=None, shuffle: bool=True, resolution_scales=[1.0]):
         """b
         :param path: Path to colmap scene main folder.
         """
-        self.model_path = args.model_path
-        self.loaded_iter = None
+        self.model_path = dair_item.model_path # dair path
         self.gaussians = gaussians
-
-        if load_iteration:
-            if load_iteration == -1:
-                self.loaded_iter = searchForMaxIteration(os.path.join(self.model_path, "point_cloud"))
-            else:
-                self.loaded_iter = load_iteration
-            print("Loading trained model at iteration {}".format(self.loaded_iter))
 
         self.train_cameras = {}
         self.test_cameras = {}
 
-        if os.path.exists(os.path.join(args.source_path, "sparse")):
-            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.eval, kshot=args.kshot, seed=args.seed, resolution=args.resolution, white_background=args.white_background)
-        elif os.path.exists(os.path.join(args.source_path, "transforms_train.json")):
-            print("Found transforms_train.json file, assuming Blender data set!")
-            scene_info = sceneLoadTypeCallbacks["Blender"](args.source_path, args.white_background, args.eval)
-        else:
-            assert False, "Could not recognize scene type!"
-
-        if not self.loaded_iter:
-            with open(scene_info.ply_path, 'rb') as src_file, open(os.path.join(self.model_path, "input.ply") , 'wb') as dest_file:
-                dest_file.write(src_file.read())
-            json_cams = []
-            camlist = []
-            if scene_info.test_cameras:
-                camlist.extend(scene_info.test_cameras)
-            if scene_info.train_cameras:
-                camlist.extend(scene_info.train_cameras)
-            for id, cam in enumerate(camlist):
-                json_cams.append(camera_to_JSON(id, cam))
-            with open(os.path.join(self.model_path, "cameras.json"), 'w') as file:
-                json.dump(json_cams, file)
-
-        if shuffle:
-            random.shuffle(scene_info.train_cameras)  # Multi-res consistent random shuffling
-
+        scene_info = sceneLoadTypeCallbacks['V2X'](dair_item)
         self.cameras_extent = scene_info.nerf_normalization["radius"]
 
         for resolution_scale in resolution_scales:

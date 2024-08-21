@@ -3,6 +3,7 @@ import os, sys, uuid, cv2, torch, torchvision
 from tqdm import tqdm
 from random import randint
 import cv2
+from drgs_utils import *
 import numpy as np
 
 from lidar2dep.dair import DAIR_V2X_C, CooperativeData
@@ -64,8 +65,6 @@ def prepare_output_and_logger(args):
         print("Tensorboard not available: not logging progress")
     return tb_writer
 
-
-from drgs_utils import *
 
 
 def Reporter(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene: Scene, renderFunc,
@@ -150,11 +149,15 @@ def create_params(parser):
     return lp.extract(parser), op.extract(parser), pp.extract(parser)
 
 
-def train_DRGS(args, inf_side_info, veh_side_info):
+def train_DRGS(
+        args, dair_item: CooperativeData,
+        inf_side_info: dict, veh_side_info:dict
+):
     """
 
     Args:
         args:
+        dair_item:
         inf_side_info:
         veh_side_info:
 
@@ -186,11 +189,28 @@ def train_DRGS(args, inf_side_info, veh_side_info):
     tb_writer = prepare_output_and_logger(dataset)
     gaussians = GaussianModel(dataset.sh_degree)
     # TODO: ↓ load cameras
-    scene = Scene(dataset, gaussians)  # TODO: transport depth&v2x-scene here
+    scene = Scene(
+        dair_item = dair_item, gaussians = gaussians,
+        inf_side_info = inf_side_info, veh_side_info = veh_side_info
+    )
+    # TODO: transport depth&v2x-scene here
     gaussians.training_setup(opt)
     if checkpoint:
         (model_params, first_iter) = torch.load(checkpoint)
         gaussians.restore(model_params, opt)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # TODO-1: find where to read camera intrinsics/extrinsics, amend them respectively.
     # TODO-2: original dataset pre stored multi-views, while we only sample two views.
@@ -316,6 +336,7 @@ def train_DRGS(args, inf_side_info, veh_side_info):
 
                 if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
                     size_threshold = 20 if iteration > opt.opacity_reset_interval else None
+                    # camera_extent ?
                     gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent,
                                                 size_threshold)
 
@@ -364,7 +385,7 @@ def main():
     dair = DAIR_V2X_C(base_dir)
     from random import randint
     prepared_idx = randint(0, 1000) % 600  # random
-    pair = CooperativeData(dair[prepared_idx], base_dir)
+    pair = CooperativeData(dair[prepared_idx], base_dir) # dair_item
 
     processed_dict = process_first(parser = None,dair_item = pair)
     """
@@ -380,9 +401,9 @@ def main():
         pred_depth[i]: 
             {
                 'depth': {
-                'fg': (colored_pred_fg, colored_init_fg, pred_fg),
-                'bg': (colored_pred_bg, colored_init_bg, pred_bg),
-                'panoptic': (colored_pred_all, colored_init, pred)
+                'fg': (colored_pred_fg, colored_init_fg, pred_fg),      -> np.array - [H W 3]
+                'bg': (colored_pred_bg, colored_init_bg, pred_bg),      -> np.array - [H W 3]
+                'panoptic': (colored_pred_all, colored_init, pred)      -> np.array - [H W 3]
                 }, 'pcd': pcd_file # use open3d.io.read_point_cloud(...)
             }
     
@@ -396,7 +417,10 @@ def main():
 
 
     parser = parser_add(parser)
-    train_DRGS(parser.parse_args(), inf_side, veh_side)
+    train_DRGS(
+        args = parser.parse_args(), dair_item = pair,
+        inf_side_info = inf_side, veh_side_info = veh_side
+    )
 
 
 

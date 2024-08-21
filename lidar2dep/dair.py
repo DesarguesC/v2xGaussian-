@@ -105,6 +105,7 @@ class DAIR_V2X_C:
     
 class CooperativeData:
     def __init__(self, dair, path=None):
+        # When initailizing, set path as the base direction where DAIR-V2X locates
         # dair: DAIR_V2X_C[idx]
         if path is None:
             path = '..'
@@ -147,6 +148,26 @@ class CooperativeData:
         # veh lidar2world matrix path
         self.veh_lidar2novatel_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/lidar_to_novatel/{self.veh_id}.json'
         self.veh_novatel2world_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/novatel_to_world/{self.veh_id}.json'
+
+        # DAIR: ../DAIR-V2X/...
+        # PLY: ../ply
+
+        inf_path_list = ['ply', 'inf', str(self.inf_id)]
+        inf_init = f'{path}/../'
+        for pp in inf_path_list:
+            inf_init = os.path.join(inf_init, pp)
+            if not os.path.exists(inf_init): os.mkdir(inf_init)
+        self.inf_ply_store_path = inf_init
+
+        veh_path_list = ['ply', 'veh', str(self.veh_id)]
+        veh_init = f'{path}/../'
+        for pp in veh_path_list:
+            veh_init = os.path.join(veh_init, pp)
+            if not os.path.exists(veh_init): os.mkdir(veh_init)
+        self.veh_ply_store_path = veh_path_list
+
+
+
 
 
     # PREVIOUS API - <Begin>

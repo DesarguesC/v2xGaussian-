@@ -155,6 +155,7 @@ def process_first(
         # np.array - [H W 3]
 
         pred_depth.append({
+                'rgb': image, # pil
                 'depth': {
                 'fg': (colored_pred_fg, colored_init_fg, pred_fg),
                 'bg': (colored_pred_bg, colored_init_bg, pred_bg),
