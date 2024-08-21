@@ -146,13 +146,13 @@ def process_first(
             Args2Results(
                 opt, rgb_file=np.array(image), pcd_file_path=pcd_file,
                 intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
-                fg_mask=None, new_path=False, extra_name='panoptic'
+                fg_mask=None, new_path=False, extra_name=f'{extra_name}-panoptic'
             )
         # 不分前背景
-
         print(colored_pred_bg, colored_pred_fg)
         print(colored_init_bg, colored_init_fg)
         print(pred_bg, pred_fg)
+        # np.array - [H W 3]
 
         pred_depth.append({
                 'depth': {
