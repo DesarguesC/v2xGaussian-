@@ -62,6 +62,7 @@ class Scene:
         """
 
         self.cameras_extent = scene_info.nerf_normalization["radius"] # 处理好的相机内参
+        # Origin: nerf_normalization = {"translate": translate, "radius": radius}
         self.gaussians.create_from_pcd(Bind_v2x_pcd(dair_info), self.cameras_extent)
 
 
