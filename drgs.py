@@ -211,13 +211,14 @@ def train_DRGS(
         (model_params, first_iter) = torch.load(checkpoint)
         gaussians_inf.restore(model_params, opt)
         gaussians_veh.restore(model_params, opt)
+        # TODO: implement a class that fit a series of 3DGS
 
-    omit = torch.nn.Parameter((1), ).requires_grad(True)
+    # Temporary using 2 3DGS
+    omit = torch.tensor(0.5).to('cuda').reshape(1,1)
+    omit = torch.nn.Parameter(omit.detach().requires_grad_(True))
 
-
-
-
-
+    inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
+    torch.empty_cache()
 
 
 
@@ -231,6 +232,7 @@ def train_DRGS(
 
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
     background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
+    # why background
 
     iter_start = torch.cuda.Event(enable_timing=True)
     iter_end = torch.cuda.Event(enable_timing=True)
@@ -248,7 +250,9 @@ def train_DRGS(
                 net_image_bytes = None
                 custom_cam, do_training, pipe.convert_SHs_python, pipe.compute_cov3D_python, keep_alive, scaling_modifer = network_gui.receive()
                 if custom_cam != None:
-                    net_image = render(custom_cam, gaussians, pipe, background, scaling_modifer)["render"]
+                    net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
+                    net_image_veh = render(custom_cam, gaussians_veh, pipe, background, scaling_modifer)["render"]
+                    net_image = net_image_inf * omit + net_image_veh * (1. - omit)
                     net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2,
                                                                                                                0).contiguous().cpu().numpy())
                 network_gui.send(net_image_bytes, dataset.source_path)
@@ -259,12 +263,14 @@ def train_DRGS(
 
         iter_start.record()
 
-        gaussians.update_learning_rate(iteration)
+        gaussians_inf.update_learning_rate(iteration)
+        gaussians_veh.update_learning_raee(iteration)
 
         # Every 1000 its we increase the levels of SH up to a maximum degree
         if iteration % 1000 == 0:
             if not (usedepth and iteration >= 2000):
-                gaussians.oneupSHdegree()
+                gaussians_inf.oneupSHdegree()
+                gaussians_veh.oneupSHdegree()
 
         # Pick a random Camera
         if not viewpoint_stack:
@@ -277,7 +283,8 @@ def train_DRGS(
 
         bg = torch.rand((3), device="cuda") if opt.random_background else background
 
-        render_pkg = render(viewpoint_cam, gaussians, pipe, bg)
+        render_pkg = render(viewpoint_cam, gaussians_inf, pipe, bg)
+        render_pkg = render(viewpoint_cam, gaussians_veh, pipe, bg)
         image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg[
             "viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
 
