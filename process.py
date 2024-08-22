@@ -141,7 +141,7 @@ def process_first(
             )
         #   前景使用lama填充背景
 
-
+        # 全景用img+pcd估计深度后，前背景分离监督
         colored_pred_all, colored_init, pred = \
             Args2Results(
                 opt, rgb_file=np.array(image), pcd_file_path=pcd_file,
@@ -156,6 +156,7 @@ def process_first(
 
         pred_depth.append({
                 'rgb': image, # pil
+                'mask': mask, # fg-mask
                 'depth': {
                 'fg': (colored_pred_fg, colored_init_fg, pred_fg),
                 'bg': (colored_pred_bg, colored_init_bg, pred_bg),

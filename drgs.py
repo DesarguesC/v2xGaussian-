@@ -164,6 +164,8 @@ def train_DRGS(
         xxx_side_info ->
         pred_depth[i]:
             {
+                'rgb': image, # pil
+                'mask': mask, # fg-mask
                 'depth': {
                 'fg': (colored_pred_fg, colored_init_fg, pred_fg),
                 'bg': (colored_pred_bg, colored_init_bg, pred_bg),
@@ -187,7 +189,9 @@ def train_DRGS(
 
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
-    gaussians = GaussianModel(dataset.sh_degree)
+    gaussians = [GaussianModel(dataset.sh_degree)] * 3
+    # TODO: implement a new class for multi gaussian splatting
+
     # TODO: ↓ load cameras
     scene = Scene(
         dair_item = dair_item, gaussians = gaussians,

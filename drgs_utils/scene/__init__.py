@@ -12,6 +12,9 @@
 import os
 import random
 import json
+
+import numpy as np
+
 from ..utils.system_utils import searchForMaxIteration
 from ..scene.dataset_readers import sceneLoadTypeCallbacks
 from ..scene.gaussian_model import GaussianModel
@@ -20,35 +23,56 @@ from ..utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
 from lidar2dep.dair import CooperativeData
 from ..scene.dataset_readers import Dair_v2x_Info, BasicPointCloud
 
-def Bind_v2x_pcd(dair: Dair_v2x_Info) -> BasicPointCloud:
+def Bind_v2x_pcd(dair: Dair_v2x_Info, inference_mode=False) -> tuple[BasicPointCloud]:
+    # 已经是世界坐标系，应该不用做poing cloud registration，直接拼接
     # align infrastructure side PCD with vehicle side PCD
     # TODO: Point Cloud Registration
     """
-    Infrastructure Side:    lidar-inf-pcd -> world-inf-pcd
-    Vehicle Side:           lidar-veh-pcd -> novatel-veh-pcd -> world-veh-pcd
+    Inference Mode:
+    「
+        Infrastructure Side:    lidar-inf-pcd -> world-inf-pcd
+        Vehicle Side:           lidar-veh-pcd -> novatel-veh-pcd -> world-veh-pcd
 
-            =>  Point Clout Registration => △p = [R|t]
+                =>  Point Clout Registration => △p = [R|t]
 
-    lidar-veh-pcd -> cam-veh-pcd --△p--> cam-inf-pcd
+        lidar-veh-pcd -> cam-veh-pcd --△p--> cam-inf-pcd
+                                                                」
+
+    On DAIR-V2X Dataset:
+        △p: dair.inf2veh
+
     """
 
+    # 已经在world坐标系下， 直接合并出新点云
+    inf_pcd, veh_pcd = dair.inf_pcd, dair.veh_pcd
+    bind_axis = 0 if inf_pcd.points.shape[0] > inf_pcd.points.shape[1] else 1
 
 
-    return
+    return BasicPointCloud(
+                points = np.concatenate([inf_pcd.points, veh_pcd.points], aixs=bind_axis),
+                colors = np.concatenate([inf_pcd.colors, veh_pcd.colors], axis=bind_axis),
+                normals = np.concatenate([inf_pcd.colors, veh_pcd.colors], axis=bind_axis)
+            ), inf_pcd, veh_pcd
+
+
+
 
 
 class Scene:
 
     gaussians : GaussianModel
 
-    def __init__(self, dair_item: CooperativeData, gaussians : GaussianModel, inf_side_info: dict=None, veh_side_info: dict=None, shuffle: bool=True, resolution_scales=[1.0]):
+    def __init__(self, dair_item: CooperativeData, gaussians : list[GaussianModel], inf_side_info: dict=None, veh_side_info: dict=None, shuffle: bool=True, resolution_scales=[1.0]):
         """b
         :param path: Path to colmap scene main folder.
         """
+        assert len(gaussians) >= 3, gaussians
         self.model_path = dair_item.model_path # dair path
-        self.gaussians = gaussians
+        self.gaussians_inf = gaussians[0]
+        self.gaussians_veh = gaussians[1]
+        self.gaussians_panoptic = gaussians[2]
 
-        dair_info = sceneLoadTypeCallbacks['V2X'](dair_item)
+        dair_info = sceneLoadTypeCallbacks['V2X'](dair_item) # lidar coordinate -> world coordinate
 
         """
             Dair_v2x_Info(
@@ -61,16 +85,25 @@ class Scene:
             )
         """
 
+        # TODO: << Regularize Camera Infos >>
         self.cameras_extent = scene_info.nerf_normalization["radius"] # 处理好的相机内参
         # Origin: nerf_normalization = {"translate": translate, "radius": radius}
-        self.gaussians.create_from_pcd(Bind_v2x_pcd(dair_info), self.cameras_extent)
+
+        # TODO: 对dair_info中的veh&inf点云拼接后做语义切割（或者切割后分别拼接），初始化fg/bg GS
+        panoptic_pcd, inf_pcd, veh_pcd = Bind_v2x_pcd(dair_info)
+        self.gaussians_veh.create_from_pcd(veh_pcd, self.cameras_extent)
+        self.gaussians_inf.create_from_pcd(inf_pcd, self.cameras_extent)
+        self.gaussians_panoptic.create_from_pcd(panoptic_pcd, self.cameras_extent)
+
 
 
 # , json_cams, self.gaussian.load_ply,
 
     def save(self, iteration):
         point_cloud_path = os.path.join(self.model_path, "point_cloud/iteration_{}".format(iteration))
-        self.gaussians.save_ply(os.path.join(point_cloud_path, "point_cloud.ply"))
+        self.gaussians_panoptic.save_ply(os.path.join(point_cloud_path, "pcd-panoptic.ply"))
+        self.gaussians_inf.save_ply(os.path.join(point_cloud_path, "pcd-inf.ply"))
+        self.gaussians_veh.save_ply(os.path.join(point_cloud_path, "pcd-veh.ply"))
 
     def getTrainCameras(self, scale=1.0):
         return self.train_cameras[scale]

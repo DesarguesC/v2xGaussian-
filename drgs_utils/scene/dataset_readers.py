@@ -710,6 +710,10 @@ class Dair_v2x_Info(NamedTuple):
     inf_cam_K: dict
     veh_cam_K: dict
     inf2veh_matrix: np.array
+    lidar2cam_inf: np.array
+    lidar2cam_veh: np.array
+    world2cam_inf: np.array
+    world2cam_veh: np.array
 
 def readDairV2XSyntheticInfo(
         dair_item: CooperativeData = None,
@@ -722,19 +726,30 @@ def readDairV2XSyntheticInfo(
 
     inf_cam_K = pair.load_intrinsic(pair.inf_cam_intrinsic_path) # h, w, K[3,3]
     veh_cam_K = pair.load_intrinsic(pair.veh_cam_intrinsic_path) # h, w, K[3,3]
-    lidar2inf, lidar2veh = pair.load_extrinsic(pair.inf_lidar2cam_path), pair.load_extrinsic(pair.veh_lidar2cam_path)
-    inf2veh = np.linalg.inv(lidar2inf) @ lidar2veh
-    inf_pcd, veh_pcd = inf_side_info['pcd'], veh_side_info['pcd']
-    # .points ✅ .colors ❎ .normals ❎
-    num_pts = 100_000
-    print(f"Generating random point cloud ({num_pts})...")
-    # We create random points inside the bounds of the synthetic Blender scenes
-    shs = np.random.random((num_pts, 3)) / 255.0
 
-    inf_pcd_ = BasicPointCloud(points=np.asarray(inf_pcd.points), colors=SH2RGB(shs), normals=np.zeros((num_pts,3)))
-    veh_pcd_ = BasicPointCloud(points=np.asarray(veh_pcd.points), colors=SH2RGB(shs), normals=np.zeros((num_pts, 3)))
-    storePly(pair.inf_ply_store_path, np.asarray(inf_pcd.points), SH2RGB(shs) * 255)
-    storePly(pair.veh_ply_store_path, np.asarray(veh_pcd.points), SH2RGB(shs) * 255)
+    lidar2cam_inf, lidar2cam_veh = pair.load_extrinsic(pair.inf_lidar2cam_path), pair.load_extrinsic(pair.veh_lidar2cam_path)
+    inf2veh = np.linalg.inv(lidar2cam_inf) @ lidar2cam_veh
+
+    lidar2world_inf = pair.load_extrinsic(pair.inf_lidar2world_path)
+    lidar2world_veh = pair.load_extrinsic(pair.veh_lidar2novatel_path) @ pair.load_extrinsic(pair.veh_novatel2world_path)
+
+    world2cam_inf = np.linalg.inv(lidar2world_inf) @ lidar2cam_inf
+    world2cam_veh = np.linalg.inv(lidar2world_veh) @ lidar2cam_veh
+    inf_pcd, veh_pcd = np.asarray(inf_side_info['pcd'].points), np.asarray(veh_side_info['pcd'].points)
+    # -> [3 X] ?
+    inf_pcd, veh_pcd = lidar2world_inf @ inf_pcd, lidar2world_veh @ veh_pcd # transfer to world coordinate
+
+    # .points ✅ .colors ❎ .normals ❎
+    print(f'[DEBUG] inf_pcd.shape = {inf_pcd.shape}, veh_pcd.shape = {veh_pcd.shape}')
+
+    # We create random points inside the bounds of the synthetic Blender scenes
+    inf_rgb = SH2RGB(np.random.random((inf_pcd.shape[1], 3)) / 255.) # -> ([X 3])
+    veh_rgb = SH2RGB(np.random.random((veh_pcd.shape[1], 3)) / 255.) # ([X 3])
+
+    inf_pcd_ = BasicPointCloud(points=inf_pcd, colors=inf_rgb, normals=np.zeros((inf_pcd.shape[1],3)))
+    veh_pcd_ = BasicPointCloud(points=veh_pcd, colors=veh_rgb, normals=np.zeros((veh_pcd.shape[1], 3)))
+    storePly(pair.inf_ply_store_path, inf_pcd, inf_rgb * 255)
+    storePly(pair.veh_ply_store_path, veh_pcd, veh_rgb * 255)
 
     return Dair_v2x_Info(
                 inf_pcd = inf_pcd_, veh_pcd = veh_pcd_,
@@ -742,7 +757,10 @@ def readDairV2XSyntheticInfo(
                 inf_depth = inf_side_info['depth'],       veh_depth = veh_side_info['depth'],
                 inf_cam_K = {'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': inf_cam_K[2]},
                 veh_cam_K = {'h': veh_cam_K[0], 'w': veh_cam_K[1], 'cam_K': veh_cam_K[2]},
-                inf2veh_matrix = inf2veh # [4 4]
+                inf2veh_matrix = inf2veh,  # [4 4],
+                lidar2cam_inf = lidar2cam_inf, lidar2cam_veh = lidar2cam_veh,
+                world2cam_inf = world2cam_inf, world2cam_veh = world2cam_veh,
+
             )
 
 

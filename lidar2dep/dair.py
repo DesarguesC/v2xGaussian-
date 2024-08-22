@@ -157,17 +157,14 @@ class CooperativeData:
         for pp in inf_path_list:
             inf_init = os.path.join(inf_init, pp)
             if not os.path.exists(inf_init): os.mkdir(inf_init)
-        self.inf_ply_store_path = inf_init
+        self.inf_ply_store_path = os.path.join(inf_init, f'{self.inf_id}.ply')
 
         veh_path_list = ['ply', 'veh', str(self.veh_id)]
         veh_init = f'{path}/../'
         for pp in veh_path_list:
             veh_init = os.path.join(veh_init, pp)
             if not os.path.exists(veh_init): os.mkdir(veh_init)
-        self.veh_ply_store_path = veh_path_list
-
-
-
+        self.veh_ply_store_path = os.path.join(veh_path_list, f'{self.veh_id}.ply')
 
 
     # PREVIOUS API - <Begin>
