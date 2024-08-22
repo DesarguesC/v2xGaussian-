@@ -4,6 +4,7 @@ from tqdm import tqdm
 from random import randint
 import cv2
 from drgs_utils import *
+from drgs_utils.scene import sceneLoadTypeCallbacks
 import numpy as np
 
 from lidar2dep.dair import DAIR_V2X_C, CooperativeData
@@ -189,21 +190,29 @@ def train_DRGS(
 
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
-    gaussians = [GaussianModel(dataset.sh_degree)] * 3
+    gaussians_inf = GaussianModel(dataset.sh_degree)
+    gaussians_veh = GaussianModel(dataset.sh_degree)
     # TODO: implement a new class for multi gaussian splatting
 
     # TODO: ↓ load cameras
-    scene = Scene(
-        dair_item = dair_item, gaussians = gaussians,
-        inf_side_info = inf_side_info, veh_side_info = veh_side_info
+    dair_info = sceneLoadTypeCallbacks['V2X'](dair_item)  # lidar coordinate -> world coordinate
+    inf_scene = Scene(
+        model_path = dair_item.model_path, dair_info = dair_info, gaussians = gaussians_inf,
+        side_info = inf_side_info, type = 'inf'
+    )
+    veh_scene = Scene(
+        model_path=dair_item.model_path, dair_info=dair_info, gaussians=gaussians_veh,
+        side_info=veh_side_info, type='veh'
     )
     # TODO: transport depth&v2x-scene here
-    gaussians.training_setup(opt)
+    gaussians_inf.training_setup(opt)
+    gaussians_veh.training_setup(opt)
     if checkpoint:
         (model_params, first_iter) = torch.load(checkpoint)
-        gaussians.restore(model_params, opt)
+        gaussians_inf.restore(model_params, opt)
+        gaussians_veh.restore(model_params, opt)
 
-
+    omit = torch.nn.Parameter((1), ).requires_grad(True)
 
 
 

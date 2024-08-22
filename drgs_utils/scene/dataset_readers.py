@@ -715,6 +715,28 @@ class Dair_v2x_Info(NamedTuple):
     world2cam_inf: np.array
     world2cam_veh: np.array
 
+    normalization: dict
+
+def AABB_func(cam_list: list) -> dict:
+    def get_center_and_diag(cam_centers):
+        cam_centers = np.hstack(cam_centers) # [3 1]*n -> [3 n]
+        avg_cam_center = np.mean(cam_centers, axis=1, keepdims=True) # -> mean -> [3 n]
+        center = avg_cam_center
+        dist = np.linalg.norm(cam_centers - center, axis=0, keepdims=True) # Euclidean distance
+        diagonal = np.max(dist) # 包围相机的AABB框的对角线长度
+        return center.flatten(), diagonal
+
+    cam_center = [cam[:3, 3:4] for cam in cam_list]
+    center, diagonal = get_center_and_diag(cam_center)
+    radius = diagonal * 1.1
+    translate = -center
+
+    return {"translate": translate, "radius": radius}
+
+
+
+
+
 def readDairV2XSyntheticInfo(
         dair_item: CooperativeData = None,
         inf_side_info: dict = None,
@@ -733,8 +755,8 @@ def readDairV2XSyntheticInfo(
     lidar2world_inf = pair.load_extrinsic(pair.inf_lidar2world_path)
     lidar2world_veh = pair.load_extrinsic(pair.veh_lidar2novatel_path) @ pair.load_extrinsic(pair.veh_novatel2world_path)
 
-    world2cam_inf = np.linalg.inv(lidar2world_inf) @ lidar2cam_inf
-    world2cam_veh = np.linalg.inv(lidar2world_veh) @ lidar2cam_veh
+    world2cam_inf = np.linalg.inv(lidar2world_inf) @ lidar2cam_inf # [4 4]
+    world2cam_veh = np.linalg.inv(lidar2world_veh) @ lidar2cam_veh # [4 4]
     inf_pcd, veh_pcd = np.asarray(inf_side_info['pcd'].points), np.asarray(veh_side_info['pcd'].points)
     # -> [3 X] ?
     inf_pcd, veh_pcd = lidar2world_inf @ inf_pcd, lidar2world_veh @ veh_pcd # transfer to world coordinate
@@ -751,6 +773,8 @@ def readDairV2XSyntheticInfo(
     storePly(pair.inf_ply_store_path, inf_pcd, inf_rgb * 255)
     storePly(pair.veh_ply_store_path, veh_pcd, veh_rgb * 255)
 
+    normalized = AABB_func([world2cam_inf, world2cam_veh])
+
     return Dair_v2x_Info(
                 inf_pcd = inf_pcd_, veh_pcd = veh_pcd_,
                 inf_rgb = np.array(inf_side_info['rgb']), veh_rgb = np.array(veh_side_info['rgb']),
@@ -760,7 +784,7 @@ def readDairV2XSyntheticInfo(
                 inf2veh_matrix = inf2veh,  # [4 4],
                 lidar2cam_inf = lidar2cam_inf, lidar2cam_veh = lidar2cam_veh,
                 world2cam_inf = world2cam_inf, world2cam_veh = world2cam_veh,
-
+                normalization = normalized
             )
 
 

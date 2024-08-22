@@ -109,6 +109,7 @@ class CooperativeData:
         # dair: DAIR_V2X_C[idx]
         if path is None:
             path = '..'
+            self.model_path = path
         self.inf_id = re.split('[/\.]', dair['infrastructure_image_path'])[-2]
         self.veh_id = re.split('[/\.]', dair['vehicle_image_path'])[-2]
         #
