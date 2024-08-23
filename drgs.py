@@ -179,6 +179,10 @@ def train_DRGS(
     Returns:
 
     """
+
+    gt_depth_inf_dict, gt_depth_veh_dict = inf_side_info['depth'], veh_side_info['depth']
+
+
     dataset, opt, pipe = create_params(args)
     testing_iterations = args.test_iterations
     saving_iterations = args.save_iterations
@@ -214,7 +218,7 @@ def train_DRGS(
         # TODO: implement a class that fit a series of 3DGS
 
     # Temporary using 2 3DGS
-    omit = torch.tensor(0.5).to('cuda').reshape(1,1)
+    omit = torch.tensor(0.5).to('cuda').reshape(1)
     omit = torch.nn.Parameter(omit.detach().requires_grad_(True))
 
     inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
@@ -250,6 +254,9 @@ def train_DRGS(
                 net_image_bytes = None
                 custom_cam, do_training, pipe.convert_SHs_python, pipe.compute_cov3D_python, keep_alive, scaling_modifer = network_gui.receive()
                 if custom_cam != None:
+                    """
+                        这里其实有问题，如果原来对点云做了合并，最终渲染得到的图片应该是更大（或一样）的，但是这里的图片肯定不是
+                    """
                     net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
                     net_image_veh = render(custom_cam, gaussians_veh, pipe, background, scaling_modifer)["render"]
                     net_image = net_image_inf * omit + net_image_veh * (1. - omit)
@@ -283,10 +290,19 @@ def train_DRGS(
 
         bg = torch.rand((3), device="cuda") if opt.random_background else background
 
-        render_pkg = render(viewpoint_cam, gaussians_inf, pipe, bg)
-        render_pkg = render(viewpoint_cam, gaussians_veh, pipe, bg)
-        image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg[
-            "viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
+        render_pkg_inf = render(viewpoint_cam, gaussians_inf, pipe, bg)
+        render_pkg_veh = render(viewpoint_cam, gaussians_veh, pipe, bg)
+
+        # weighted
+        image = render_pkg_inf["render"] * omit + render_pkg_veh["render"] * (1. - omit)
+         # = render_pkg_inf["render"] * omit + render_pkg_veh["render"] * (1. - omit)
+
+        viewspace_point_tensor = torch.zeros_like(
+            torch.cat([gaussians_inf.get_xyz, gaussians_veh.get_xyz], dim=1), dtype=gaussians_inf.get_xyz.dtype, requires_grad=True, device="cuda"
+        ) + 0
+
+        # TODO: Bind
+        visibility_filter, radii = render_pkg["visibility_filter"], render_pkg["radii"]
 
         # Loss
         gt_image = viewpoint_cam.original_image.cuda()
@@ -294,15 +310,29 @@ def train_DRGS(
         loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
 
         ### depth supervised loss
-        depth = render_pkg["depth"]
-        if usedepth and viewpoint_cam.original_depth is not None:
-            depth_mask = (viewpoint_cam.original_depth > 0)  # render_pkg["acc"][0]
-            gt_maskeddepth = (viewpoint_cam.original_depth * depth_mask).cuda()
+        depth_inf = render_pkg_inf["depth"]
+        depth_veh = render_pkg_veh["depth"]
+        # if usedepth and viewpoint_cam.original_depth is not None:
+        if usedepth:
+            # depth_mask = inf_fg_mask if gaussians is gaussians_inf else veh_fg_mask  # render_pkg["acc"][0]
+            gt_maskeddepth_inf_fg = (gt_depth_inf_dict['fg'] * inf_fg_mask).cuda()
+            gt_maskeddepth_inf_bg = (gt_depth_inf_dict['bg'] * (1.-inf_fg_mask)).cuda()
+            gt_maskeddepth_veh_fg = (gt_depth_veh_dict['fg'] * veh_fg_mask).cuda()
+            gt_maskeddepth_veh_bg = (gt_depth_veh_dict['dg'] * (1.-veh_fg_mask)).cuda()
             if args.white_background:  # for 360 datasets ...
-                gt_maskeddepth = normalize_depth(gt_maskeddepth)
-                depth = normalize_depth(depth)
+                gt_maskeddepth_inf_fg = normalize_depth(gt_maskeddepth_inf_fg)
+                gt_maskeddepth_inf_bg = normalize_depth(gt_maskeddepth_inf_bg)
+                gt_maskeddepth_veh_fg = normalize_depth(gt_maskeddepth_veh_fg)
+                gt_maskeddepth_veh_bg = normalize_depth(gt_maskeddepth_veh_bg)
 
-            deploss = l1_loss(gt_maskeddepth, depth * depth_mask) * 0.5
+                depth_inf = normalize_depth(depth_inf)
+                depth_veh = normalize_depth(depth_veh)
+
+            deploss = l1_loss(gt_maskeddepth_inf_fg, depth_inf * inf_fg_mask) * 0.5 + \
+                      l1_loss(gt_maskeddepth_inf_bg, depth_inf * (1. - inf_fg_mask)) * 0.5 + \
+                      l1_loss(gt_maskeddepth_veh_fg, depth_veh * veh_fg_mask) * 0.5 + \
+                      l1_loss(gt_maskeddepth_veh_bg, depth_veh * (1. - veh_fg_mask)) * 0.5
+
             loss = loss + deploss
 
         ## depth regularization loss (canny)
@@ -347,6 +377,7 @@ def train_DRGS(
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
 
+            # TODO: Respectively
             for gaussians in [gaussians_inf, gaussians_veh]:
             # Densification
                 if iteration < opt.densify_until_iter and ((not usedepth) or gaussians._xyz.shape[0] <= 1500000):
