@@ -298,7 +298,7 @@ def train_DRGS(
         if usedepth and viewpoint_cam.original_depth is not None:
             depth_mask = (viewpoint_cam.original_depth > 0)  # render_pkg["acc"][0]
             gt_maskeddepth = (viewpoint_cam.original_depth * depth_mask).cuda()
-            if parser.white_background:  # for 360 datasets ...
+            if args.white_background:  # for 360 datasets ...
                 gt_maskeddepth = normalize_depth(gt_maskeddepth)
                 depth = normalize_depth(depth)
 
@@ -329,7 +329,7 @@ def train_DRGS(
                 if iteration > opt.min_iters and ema_depthloss_for_log > prev_depthloss:
                     Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
                                     [iteration], scene, render,
-                                    (pipe, background), txt_path=os.path.join(parser.model_path, "metric.txt"))
+                                    (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
                     scene.save(iteration)
                     print(f"!!! Stop Point: {iteration} !!!")
                     break
@@ -342,37 +342,39 @@ def train_DRGS(
             # Log and save
             Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
                             testing_iterations, scene, render,
-                            (pipe, background), txt_path=os.path.join(parser.model_path, "metric.txt"))
+                            (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
             if (iteration in saving_iterations):
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
 
+            for gaussians in [gaussians_inf, gaussians_veh]:
             # Densification
-            if iteration < opt.densify_until_iter and ((not usedepth) or gaussians._xyz.shape[0] <= 1500000):
-                # Keep track of max radii in image-space for pruning
-                gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter],
-                                                                     radii[visibility_filter])
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
+                if iteration < opt.densify_until_iter and ((not usedepth) or gaussians._xyz.shape[0] <= 1500000):
+                    # Keep track of max radii in image-space for pruning
+                    gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter],
+                                                                         radii[visibility_filter])
+                    gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
 
-                if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
-                    size_threshold = 20 if iteration > opt.opacity_reset_interval else None
-                    # camera_extent ?
-                    gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent,
-                                                size_threshold)
+                    if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
+                        size_threshold = 20 if iteration > opt.opacity_reset_interval else None
+                        # camera_extent ?
+                        gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent,
+                                                    size_threshold)
 
-                if not usedepth:
-                    if iteration % opt.opacity_reset_interval == 0 or (
-                            dataset.white_background and iteration == opt.densify_from_iter):
-                        gaussians.reset_opacity()
+                    if not usedepth:
+                        if iteration % opt.opacity_reset_interval == 0 or (
+                                dataset.white_background and iteration == opt.densify_from_iter):
+                            gaussians.reset_opacity()
 
-            # Optimizer step
-            if iteration < opt.iterations:
-                gaussians.optimizer.step()
-                gaussians.optimizer.zero_grad(set_to_none=True)
 
-            if (iteration in checkpoint_iterations):
-                print("\n[ITER {}] Saving Checkpoint".format(iteration))
-                torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
+                # Optimizer step
+                if iteration < opt.iterations:
+                    gaussians.optimizer.step()
+                    gaussians.optimizer.zero_grad(set_to_none=True)
+
+                if (iteration in checkpoint_iterations):
+                    print("\n[ITER {}] Saving Checkpoint".format(iteration))
+                    torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
 
     pass
 
