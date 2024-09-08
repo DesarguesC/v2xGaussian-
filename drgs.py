@@ -220,15 +220,11 @@ def train_DRGS(
     # Temporary using 2 3DGS
     omit = torch.tensor(0.5).to('cuda').reshape(1)
     omit = torch.nn.Parameter(omit.detach().requires_grad_(True))
+    # 变成一个带权的高斯，用来操控 重叠/空缺 部分的深度信息 -> 一个scalar可控的，用来组合场景的中间件
+    # 拓展：能以可微的方式优化路端视角 -> 在真实场景中，路端视角和车端视角之间的具体变换关系可能不知道？
 
     inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
     torch.empty_cache()
-
-
-
-
-
-
 
     # TODO-1: find where to read camera intrinsics/extrinsics, amend them respectively.
     # TODO-2: original dataset pre stored multi-views, while we only sample two views.
@@ -259,9 +255,9 @@ def train_DRGS(
                     """
                     net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
                     net_image_veh = render(custom_cam, gaussians_veh, pipe, background, scaling_modifer)["render"]
+                    print(f"[Debug] | net_image_inf.shape = {net_image_inf.shape}, net_image_veh.shape = {net_image_veh.shape}, omit.shape = {omit.shape}")
                     net_image = net_image_inf * omit + net_image_veh * (1. - omit)
-                    net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2,
-                                                                                                               0).contiguous().cpu().numpy())
+                    net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
                 network_gui.send(net_image_bytes, dataset.source_path)
                 if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
                     break
@@ -290,19 +286,22 @@ def train_DRGS(
 
         bg = torch.rand((3), device="cuda") if opt.random_background else background
 
+        # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
         render_pkg_inf = render(viewpoint_cam, gaussians_inf, pipe, bg)
         render_pkg_veh = render(viewpoint_cam, gaussians_veh, pipe, bg)
 
         # weighted
         image = render_pkg_inf["render"] * omit + render_pkg_veh["render"] * (1. - omit)
-         # = render_pkg_inf["render"] * omit + render_pkg_veh["render"] * (1. - omit)
 
-        viewspace_point_tensor = torch.zeros_like(
-            torch.cat([gaussians_inf.get_xyz, gaussians_veh.get_xyz], dim=1), dtype=gaussians_inf.get_xyz.dtype, requires_grad=True, device="cuda"
-        ) + 0
+        # viewspace_point_tensor = torch.zeros_like(
+        #     torch.cat([gaussians_inf.get_xyz, gaussians_veh.get_xyz], dim=1), dtype=gaussians_inf.get_xyz.dtype, requires_grad=True, device="cuda"
+        # ) + 0
 
         # TODO: Bind
-        visibility_filter, radii = render_pkg["visibility_filter"], render_pkg["radii"]
+        # 如何合并？radii, visibility_filter都是用来控制GS球分裂&合并的，Densification
+        visibility_filter_inf, radii_inf, viewspace_point_tensor_inf = render_pkg_inf["visibility_filter"], render_pkg_inf["radii"], render_pkg_inf['viewspace_points']
+        visibility_filter_veh, radii_veh, viewspace_point_tensor_veh = render_pkg_veh["visibility_filter"], render_pkg_veh["radii"], render_pkg_veh['viewspace_points']
+
 
         # Loss
         gt_image = viewpoint_cam.original_image.cuda()
@@ -310,8 +309,7 @@ def train_DRGS(
         loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
 
         ### depth supervised loss
-        depth_inf = render_pkg_inf["depth"]
-        depth_veh = render_pkg_veh["depth"]
+        depth_inf, depth_veh = render_pkg_inf["depth"], render_pkg_veh["depth"]
         # if usedepth and viewpoint_cam.original_depth is not None:
         if usedepth:
             # depth_mask = inf_fg_mask if gaussians is gaussians_inf else veh_fg_mask  # render_pkg["acc"][0]
@@ -337,9 +335,14 @@ def train_DRGS(
 
         ## depth regularization loss (canny)
         if usedepthReg and iteration >= 0:
-            depth_mask = (depth > 0).detach()
-            nearDepthMean_map = nearMean_map(depth, viewpoint_cam.canny_mask * depth_mask, kernelsize=3)
-            loss = loss + l2_loss(nearDepthMean_map, depth * depth_mask) * 1.0
+
+            depth_mask_inf, depth_mask_veh = (depth_inf > 0).detach(), (depth_veh > 0).detach()
+            # Ori Name: nearDepthMean_map
+            map_inf = nearMean_map(depth_inf, viewpoint_cam.canny_mask * depth_mask_inf, kernelsize=3)
+            map_veh = nearMean_map(depth_veh, viewpoint_cam.canny_mask * depth_mask_veh, kernelsize=3)
+            loss = loss + l2_loss(map_inf, depth_inf * depth_mask_inf) * 1.0 + l2_loss(map_veh, depth_veh * depth_mask_veh) * 1.0
+
+
 
         loss.backward()
 
@@ -378,7 +381,11 @@ def train_DRGS(
                 scene.save(iteration)
 
             # TODO: Respectively
-            for gaussians in [gaussians_inf, gaussians_veh]:
+            for gaussian_item in [
+                (gaussians_inf, visibility_filter_inf, radii_inf, viewspace_point_tensor_inf, 'inf'),
+                (gaussians_veh, visibility_filter_veh, radii_veh, viewspace_point_tensor_veh, 'veh')
+            ]:
+                gaussians, visibility_filter, radii, viewspace_point_tensor, data_type = gaussian_item
             # Densification
                 if iteration < opt.densify_until_iter and ((not usedepth) or gaussians._xyz.shape[0] <= 1500000):
                     # Keep track of max radii in image-space for pruning
@@ -405,7 +412,7 @@ def train_DRGS(
 
                 if (iteration in checkpoint_iterations):
                     print("\n[ITER {}] Saving Checkpoint".format(iteration))
-                    torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
+                    torch.save((gaussians.capture(), iteration), scene.model_path + f"/{data_type}-chkpnt" + str(iteration) + ".pth")
 
     pass
 

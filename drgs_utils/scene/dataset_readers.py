@@ -717,6 +717,20 @@ class Dair_v2x_Info(NamedTuple):
 
     normalization: dict
 
+    """
+    
+    Original Scene_Info
+        point_cloud: BasicPointCloud
+        train_cameras: list
+        test_cameras: list
+        nerf_normalization: dict
+        ply_path: str
+    
+    """
+
+
+
+
 def AABB_func(cam_list: list) -> dict:
     def get_center_and_diag(cam_centers):
         cam_centers = np.hstack(cam_centers) # [3 1]*n -> [3 n]
