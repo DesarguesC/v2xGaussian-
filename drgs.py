@@ -256,6 +256,8 @@ def train_DRGS(
                     net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
                     net_image_veh = render(custom_cam, gaussians_veh, pipe, background, scaling_modifer)["render"]
                     print(f"[Debug] | net_image_inf.shape = {net_image_inf.shape}, net_image_veh.shape = {net_image_veh.shape}, omit.shape = {omit.shape}")
+
+                    # 这里不能简单地做叠加
                     net_image = net_image_inf * omit + net_image_veh * (1. - omit)
                     net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
                 network_gui.send(net_image_bytes, dataset.source_path)
@@ -291,7 +293,8 @@ def train_DRGS(
         render_pkg_veh = render(viewpoint_cam, gaussians_veh, pipe, bg)
 
         # weighted
-        image = render_pkg_inf["render"] * omit + render_pkg_veh["render"] * (1. - omit)
+        image_inf, image_veh = render_pkg_inf["render"], render_pkg_veh["render"]
+        # image = render_pkg_inf["render"] * omit + render_pkg_veh["render"] * (1. - omit)
 
         # viewspace_point_tensor = torch.zeros_like(
         #     torch.cat([gaussians_inf.get_xyz, gaussians_veh.get_xyz], dim=1), dtype=gaussians_inf.get_xyz.dtype, requires_grad=True, device="cuda"
@@ -304,9 +307,14 @@ def train_DRGS(
 
 
         # Loss
-        gt_image = viewpoint_cam.original_image.cuda()
-        Ll1 = l1_loss(image, gt_image)
-        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
+        # gt_image = viewpoint_cam.original_image.cuda()
+        # TODO: rgb的损失要分别传给对应的GS, depth是一起渲染的, 一起传播 | 修改上面这行代码，以及对应到的class下的成员读取
+        gt_image_inf, gt_image_veh = ...?
+        Ll1 = l1_loss(image_inf, gt_image_inf) * omit + l1_loss(image_veh, gt_image_veh) * (1. - omit)
+        # loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
+        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * \
+               (1.0 - ssim(image_inf, gt_image_inf) * omit - ssim(image_veh, gt_image_veh) * (1. - omit))
+
 
         ### depth supervised loss
         depth_inf, depth_veh = render_pkg_inf["depth"], render_pkg_veh["depth"]
