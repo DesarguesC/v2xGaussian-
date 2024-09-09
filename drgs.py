@@ -3,8 +3,20 @@ import os, sys, uuid, cv2, torch, torchvision
 from tqdm import tqdm
 from random import randint
 import cv2
-from drgs_utils import *
-from drgs_utils.scene import sceneLoadTypeCallbacks
+# from drgs_utils import *
+from drgs_utils import (
+    depth_colorize_with_mask,
+    ModelParams,
+    OptimizationParams,
+    PipelineParams,
+    psnr, ssim, lpips,
+    GaussianModel,
+    network_gui, render,
+    normalize_depth,
+    l1_loss, l2_loss,
+    nearMean_map
+)
+from drgs_utils.scene import sceneLoadTypeCallbacks, sceneConbinationCallbacks
 import numpy as np
 
 from lidar2dep.dair import DAIR_V2X_C, CooperativeData
@@ -208,6 +220,10 @@ def train_DRGS(
         model_path=dair_item.model_path, dair_info=dair_info, gaussians=gaussians_veh,
         side_info=veh_side_info, type='veh'
     )
+
+
+    Train_Scene = sceneConbinationCallbacks[''](inf_scene, veh_scene)
+
     # TODO: transport depth&v2x-scene here
     gaussians_inf.training_setup(opt)
     gaussians_veh.training_setup(opt)
@@ -281,6 +297,7 @@ def train_DRGS(
         if not viewpoint_stack:
             viewpoint_stack = scene.getTrainCameras().copy()
         viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1))
+        # TODO: 原始DRGS代码再viewpoint_cam.original_depth处提供了深度ground truth，我换个地方提供
 
         # Render
         if (iteration - 1) == debug_from:

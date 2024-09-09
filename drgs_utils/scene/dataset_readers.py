@@ -36,6 +36,8 @@ import imageio
 from datetime import datetime
 from tqdm import tqdm
 
+from . import Scene
+
 from lidar2dep.dair import DAIR_V2X_C, CooperativeData
 
 class CameraInfo(NamedTuple):
@@ -810,3 +812,21 @@ sceneLoadTypeCallbacks = {
     "Blender" : readNerfSyntheticInfo,
     "V2X": readDairV2XSyntheticInfo
 }
+
+
+def returnMultiPCD(inf_scene: Scene, veh_scene: Scene) -> Scene:
+    ...
+
+def returnConbinedPCD(inf_scene: Scene, veh_scene: Scene) -> Scene:
+    ...
+
+def returnConbinedDepth(inf_scene: Scene, veh_scene: Scene) -> Scene:
+    ...
+
+
+sceneConbinationCallbacks = {
+    'multi-pcd': returnMultiPCD, # 多点云, 作为视角list
+    'conbine-pcd': returnConbinedPCD, # 先合并点云, 两个深度
+    'conbine-depth': returnConbinedDepth, # 点云不合并, 使用深度时对深度用系数omit(或者再开新的)叠加
+}
+
