@@ -16,7 +16,7 @@ from drgs_utils import (
     l1_loss, l2_loss,
     nearMean_map
 )
-from drgs_utils.scene import sceneLoadTypeCallbacks, sceneConbinationCallbacks
+from drgs_utils.scene import Scene, sceneLoadTypeCallbacks, sceneConbinationCallbacks
 import numpy as np
 
 from lidar2dep.dair import DAIR_V2X_C, CooperativeData
@@ -167,7 +167,6 @@ def train_DRGS(
         inf_side_info: dict, veh_side_info:dict
 ):
     """
-
     Args:
         args:
         dair_item:
@@ -193,7 +192,6 @@ def train_DRGS(
     """
 
     gt_depth_inf_dict, gt_depth_veh_dict = inf_side_info['depth'], veh_side_info['depth']
-
 
     dataset, opt, pipe = create_params(args)
     testing_iterations = args.test_iterations
@@ -280,12 +278,13 @@ def train_DRGS(
                 if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
                     break
             except Exception as e:
+                print(f'err: {e}')
                 network_gui.conn = None
 
         iter_start.record()
 
         gaussians_inf.update_learning_rate(iteration)
-        gaussians_veh.update_learning_raee(iteration)
+        gaussians_veh.update_learning_rate(iteration)
 
         # Every 1000 its we increase the levels of SH up to a maximum degree
         if iteration % 1000 == 0:
@@ -296,8 +295,8 @@ def train_DRGS(
         # Pick a random Camera
         if not viewpoint_stack:
             viewpoint_stack = scene.getTrainCameras().copy()
-        viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1))
-        # TODO: 原始DRGS代码再viewpoint_cam.original_depth处提供了深度ground truth，我换个地方提供
+        viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1)) # 弹出任意位置的元素(并删除)，非严格的栈结构
+        # TODO: 原始DRGS代码再viewpoint_cam.original_depth和viewpoint_cam.original_iamge处提供了ground truth，我换个地方提供
 
         # Render
         if (iteration - 1) == debug_from:

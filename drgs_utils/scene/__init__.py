@@ -63,34 +63,55 @@ class Scene:
     gaussians : GaussianModel
     # multi Gaussian -> i.e., using multi class<Scene>
 
-    def __init__(self, model_path, dair_info: CooperativeData, gaussians : GaussianModel, type: str='inf', side_info: dict=None, shuffle: bool=True, resolution_scales=[1.0]):
+    def __init__(self, model_path, dair_info: Dair_v2x_Info, gaussians : GaussianModel, type: str='inf', side_info: dict=None, shuffle: bool=True, resolution_scales=[1.0]):
         """b
         :param path: Path to colmap scene main folder.
         """
         self.model_path = model_path # dair path
         self.teyp = type
+        anti_type = 'inf' if type == 'veh' else 'veh'
         self.gaussians = gaussians
-
 
         """
             Dair_v2x_Info(
-                inf_pcd=inf_pcd_, veh_pcd=veh_pcd_,
-                inf_rgb=np.array(inf_side_info['rgb']), veh_rgb=np.array(veh_side_info['rgb']),
-                inf_depth=inf_side_info['depth'], veh_depth=veh_side_info['depth'],
-                inf_cam_K={'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': inf_cam_K[2]},
-                veh_cam_K={'h': veh_cam_K[0], 'w': veh_cam_K[1], 'cam_K': veh_cam_K[2]},
-                inf2veh_matrix=inf2veh  # [4 4]
+                inf_pcd = inf_pcd_, veh_pcd = veh_pcd_,
+                inf_rgb = np.array(inf_side_info['rgb']), veh_rgb = np.array(veh_side_info['rgb']),
+                inf_depth = inf_side_info['depth'],       veh_depth = veh_side_info['depth'],
+                inf_cam_K = {'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': inf_cam_K[2]},
+                veh_cam_K = {'h': veh_cam_K[0], 'w': veh_cam_K[1], 'cam_K': veh_cam_K[2]},
+                inf2veh_matrix = inf2veh,  # [4 4],
+                lidar2cam_inf = lidar2cam_inf, lidar2cam_veh = lidar2cam_veh,
+                world2cam_inf = world2cam_inf, world2cam_veh = world2cam_veh,
+                normalization_inf = normalized_inf, normalization_veh = normalizedd_veh
             )
         """
 
         # TODO: << Regularize Camera Infos >>
-        self.cameras_extent = dair_info.normalization["radius"] # 处理好的相机内参
+        self.cameras_extent = getattr(dair_info, f'normalization_{type}')["radius"] # 处理好的相机内参
         # Origin: nerf_normalization = {"translate": translate, "radius": radius}
 
         # TODO: 对dair_info中的veh&inf点云拼接后做语义切割（或者切割后分别拼接），初始化fg/bg GS
         # panoptic_pcd, inf_pcd, veh_pcd = Bind_v2x_pcd(dair_info)
         self.gaussians.create_from_pcd(getattr(dair_info, f'{type}_pcd'), self.cameras_extent)
 
+        self.train_cameras, self.test_cameras = {}, {}
+        for scale in resolution_scales:
+            self.train_cameras[scale] = {
+                'intrinsics': getattr(dair_info, f'normalization_{type}'),
+                'world2cam': getattr(dair_info, f'world2cam_{type}'),
+                'lidar2cam': getattr(dair_info, f'lidar2cam_{type}'),
+                'original_image': getattr(dair_info, f'{type}_rgb'),
+                'original_depth': getattr(dair_info, f'{type}_depth'),
+                f'{type}2{anti_type}': dair_info.inf2veh_matrix if type=='inf' else np.lialg.inv(dair_info.inf2veh_matrix)
+            }
+            self.test_cameras[scale] = {
+                'intrinsics': getattr(dair_info, f'normalization_{anti_type}'),
+                'world2cam': getattr(dair_info, f'world2cam_{anti_type}'),
+                'lidar2cam': getattr(dair_info, f'lidar2cam_{anti_type}'),
+                'original_image': getattr(dair_info, f'{anti_type}_rgb'),
+                'original_depth': getattr(dair_info, f'{anti_type}_depth'),
+                f'{anti_type}2{type}': dair_info.inf2veh_matrix if type == 'inf' else np.lialg.inv(dair_info.inf2veh_matrix)
+            }
 
 
 # , json_cams, self.gaussian.load_ply,
@@ -107,6 +128,14 @@ class Scene:
 
     def getTestCameras(self, scale=1.0):
         return self.test_cameras[scale]
+
+
+class multiGS_Scene(Scene):
+
+    def __init__(self, ):
+        ...
+
+
 
 
 class Depth_Scene:

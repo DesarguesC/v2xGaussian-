@@ -717,7 +717,8 @@ class Dair_v2x_Info(NamedTuple):
     world2cam_inf: np.array
     world2cam_veh: np.array
 
-    normalization: dict
+    normalization_inf: dict
+    normalization_veh: dict
 
     """
     
@@ -730,9 +731,6 @@ class Dair_v2x_Info(NamedTuple):
     
     """
 
-
-
-
 def AABB_func(cam_list: list) -> dict:
     def get_center_and_diag(cam_centers):
         cam_centers = np.hstack(cam_centers) # [3 1]*n -> [3 n]
@@ -743,7 +741,7 @@ def AABB_func(cam_list: list) -> dict:
         return center.flatten(), diagonal
 
     cam_center = [cam[:3, 3:4] for cam in cam_list]
-    center, diagonal = get_center_and_diag(cam_center)
+    center, diagonal = get_center_and_diag(cam_center) # input: [..., ...]
     radius = diagonal * 1.1
     translate = -center
 
@@ -789,7 +787,8 @@ def readDairV2XSyntheticInfo(
     storePly(pair.inf_ply_store_path, inf_pcd, inf_rgb * 255)
     storePly(pair.veh_ply_store_path, veh_pcd, veh_rgb * 255)
 
-    normalized = AABB_func([world2cam_inf, world2cam_veh])
+    normalized_inf = AABB_func([world2cam_inf])
+    normalizedd_veh = AABB_func([world2cam_veh])
 
     return Dair_v2x_Info(
                 inf_pcd = inf_pcd_, veh_pcd = veh_pcd_,
@@ -800,10 +799,8 @@ def readDairV2XSyntheticInfo(
                 inf2veh_matrix = inf2veh,  # [4 4],
                 lidar2cam_inf = lidar2cam_inf, lidar2cam_veh = lidar2cam_veh,
                 world2cam_inf = world2cam_inf, world2cam_veh = world2cam_veh,
-                normalization = normalized
+                normalization_inf = normalized_inf, normalization_veh = normalizedd_veh
             )
-
-
 
 
 
@@ -814,7 +811,20 @@ sceneLoadTypeCallbacks = {
 }
 
 
+class temp_camera(NamedTuple):
+    # 作为此处的scene返回的一个属性
+    original_depth: torch.Tensor
+    original_image: torch.Tensor
+
+
+
+
 def returnMultiPCD(inf_scene: Scene, veh_scene: Scene) -> Scene:
+
+
+
+
+    setattr(.., temp_camera(...))
     ...
 
 def returnConbinedPCD(inf_scene: Scene, veh_scene: Scene) -> Scene:
@@ -823,10 +833,13 @@ def returnConbinedPCD(inf_scene: Scene, veh_scene: Scene) -> Scene:
 def returnConbinedDepth(inf_scene: Scene, veh_scene: Scene) -> Scene:
     ...
 
+def returnDirectlyV2X(scene: Dair_v2x_Info) -> Scene:
+    ...
 
 sceneConbinationCallbacks = {
     'multi-pcd': returnMultiPCD, # 多点云, 作为视角list
     'conbine-pcd': returnConbinedPCD, # 先合并点云, 两个深度
     'conbine-depth': returnConbinedDepth, # 点云不合并, 使用深度时对深度用系数omit(或者再开新的)叠加
+    'deal-v2x': returnDirectlyV2X # 直接使用v2x-pair
 }
 
