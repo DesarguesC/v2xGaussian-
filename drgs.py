@@ -164,7 +164,8 @@ def create_params(parser):
 
 def train_DRGS(
         args, dair_item: CooperativeData,
-        inf_side_info: dict, veh_side_info:dict
+        inf_side_info: dict, veh_side_info:dict,
+        inf_view_veh: np.array, veh_view_inf: np.array
 ):
     """
     Args:
@@ -219,8 +220,13 @@ def train_DRGS(
         side_info=veh_side_info, type='veh'
     )
 
+    # 在世界坐标系下合并点云, 使用inf_view_veh和veh_view_inf
+    Train_Scene = sceneConbinationCallbacks['conbine-pcd'](inf_scene, veh_scene)
+    # TODO: train_camera_list & test_camera_list
+    # TODO: 这里只能合并点云, 两个scene还是得分开优化, 因为有两个高斯; 前面train_camera和test_camera里有随机索引, 我干脆每次随机挑一个优化
+    # -> train_camera/test_camera 另外实现一个类, 调到哪个就优化哪个类
 
-    Train_Scene = sceneConbinationCallbacks[''](inf_scene, veh_scene)
+
 
     # TODO: transport depth&v2x-scene here
     gaussians_inf.training_setup(opt)
@@ -478,6 +484,8 @@ def main():
         'veh-side': pred_depth[1],
         'args': opt,
         'parser': parser
+        'inf-side-veh': pred_depth[2]['side-depth'], # mapping depth from veh-pcd to infrastructure view
+        'veh-side-inf': pred_depth[3]['side-depth'], # mapping depth from inf-pcd to vehicle view
     }
     
     
@@ -499,11 +507,14 @@ def main():
     inf_side = processed_dict['inf-side']
     veh_side = processed_dict['veh-side']
 
+    inf_view_veh = processed_dict['inf-side-veh']
+    veh_view_inf = processed_dict['veh-sid-inf']
 
     parser = parser_add(parser)
     train_DRGS(
         args = parser.parse_args(), dair_item = pair,
-        inf_side_info = inf_side, veh_side_info = veh_side
+        inf_side_info = inf_side, veh_side_info = veh_side,
+        inf_view_veh = inf_view_veh, veh_view_inf = veh_view_inf
     )
 
 

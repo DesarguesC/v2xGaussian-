@@ -211,6 +211,7 @@ def Args2Results(
     pred = (pred - m) / (M - m) * 255.
     colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     print(pred)
+    # depth writing paths
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'pred_depth-{extra_name}.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'colored_pred_depth-{extra_name}.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
 
@@ -223,6 +224,41 @@ def Args2Results(
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'colored_pred_init-{extra_name}.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
 
     return colored_pred, colored_init, pred
+
+def Direct_Renderring(pcd_file, depth_path: str, extra_name: str, cam_intrinsics: dict, cam_extrinsics: np.array):
+    """
+    camera_param
+        {
+                    'intrinsic': {
+                        'dict': intrinsic_dict, # intrinsics dict
+                        'matrix': K # [3 3] array
+                        },
+                    'extrinsic': extrinsic_array, # [4 4] array
+        }
+    """
+    H, W = cam_intrinsics['intrinsic']['height'], cam_intrinsics['intrinsic']['weight']
+    cam_K = cam_intrinsics['matrix']
+
+    renderer = o3d.visualization.rendering.OffscreenRenderer(width=W, height=H)
+    material = o3d.visualization.rendering.MaterialRecord()
+    material.point_size = 5
+    material.shader = 'unlit'  # maintain original colors
+    renderer.scene.add_geometry("point_cloud", pcd_file, material)
+    # vis.add_geometry(pcd_file)
+
+    renderer.setup_camera(cam_K, cam_extrinsics, W, H)
+    pcd_img = np.asarray(renderer.render_to_depth_image())
+
+    M, m = np.max(pcd_img), np.min(pcd_img)
+    depth_image = (pcd_img - m) / (M - m) * 255.
+
+    colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    cv2.imwrite(os.path.join(depth_path, f'projected_pcd-{extra_name}.jpg'),
+                cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
+
+    return {'side-depth': pcd_img}
+
+
 
 
 if __name__ == '__main__':

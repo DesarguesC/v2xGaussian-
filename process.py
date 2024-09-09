@@ -3,7 +3,7 @@ import numpy as np
 import open3d as o3d
 from PIL import Image
 from lidar2dep.config import Get_Merged_Args, get_args_parser
-from lidar2dep.main import Args2Results
+from lidar2dep.main import Args2Results, Direct_Renderring
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
 from seem.masks import FG_remove, FG_remove_All, preload_seem_detector, preload_lama_remover
 from lidar2dep.dair import DAIR_V2X_C, CooperativeData
@@ -21,7 +21,7 @@ def process_first(
         # rgb_file_path: list[str] = None, pcd_file_path: list[str] = None,
         # intrinsic_path: list[str] = None, extrinsic_path: list[str] = None
 ):
-    assert dair_item is not None
+    # assert dair_item is not None
     if parser is None:
         parser = argparse.ArgumentParser()
 
@@ -84,6 +84,16 @@ def process_first(
         {
             'rgb': dair_item.veh_side_img, 'pcd': dair_item.veh_side_pcd,
             'camera': dair_item.load4pcd_render(type='veh'), 'extra': 'veh'
+        },
+        # mapping depth from veh-pcd to infrastructure view
+        {
+            'rgb': None, 'pcd': dair_item.inf_side_pcd,
+            'camera': dair_item.load4pcd_render(type='veh'), 'extra': 'inf-side-veh'
+        },
+        # mapping depth from inf-pcd to vehicle view
+        {
+            'rgb': None, 'pcd': dair_item.veh_side_pcd,
+            'camera': dair_item.load4pcd_render(type='inf'), 'extra': 'veh-side-inf'
         }
     ]
 
@@ -96,6 +106,23 @@ def process_first(
         pcd_file = o3d.io.read_point_cloud(pcd_file_path)
         camera = file['camera']
         extra_name = file['extra']
+
+        if rgb_file is None:
+            # 算变换矩阵
+            if 'inf' in extra_name: # inf view veh: veh_lidar 2 world 2 inf_lidar 2 inf_cam
+                veh_lidar2world = dair_item.veh_side_pcd2world()
+                world2inf_cam = dair_item.world2inf_cam()
+                cam_extrinsics = veh_lidar2world @ world2inf_cam
+
+            else:
+                inf_lidar2world = dair_item.inf_side_pcd2world()
+                world2veh_cam = dair_item.world2veh_cam()
+                cam_extrinsics = inf_lidar2world @ world2veh_cam
+
+            direct_result = Direct_Renderring(pcd_file, opt.depth_path, extra_name, camera, cam_extrinsics)
+            # {"side-depth": depth}
+            pred_depth.append(direct_result)
+            continue
 
 
         # load image
@@ -166,11 +193,15 @@ def process_first(
 
     print('\nDone.')
 
+
+    assert len(pred_depth) == 4, f'len(pred_depth) = {len(pred_depth)}'
     return {
         'inf-side': pred_depth[0],
         'veh-side': pred_depth[1],
         'args': opt,
-        'parser': parser
+        'parser': parser,
+        'inf-side-veh': pred_depth[2]['side-depth'], # mapping depth from veh-pcd to infrastructure view
+        'veh-side-inf': pred_depth[3]['side-depth'], # mapping depth from inf-pcd to vehicle view
     }
 
 

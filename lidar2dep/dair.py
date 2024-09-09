@@ -282,10 +282,10 @@ class CooperativeData:
         }
 
     # 全都放到world坐标系的方法
-    def ins_side_pcd2world(self):
-        _, ins_pcd_arr = self.load_pcd(self.inf_pcd_path)
+    def inf_side_pcd2world(self):
+        _, inf_pcd_arr = self.load_pcd(self.inf_pcd_path)
         Trans = self.load_extrinsic(self.inf_lidar2world_path)  # [4 4]
-        pcd_world = Trans @ ins_pcd_arr
+        pcd_world = Trans @ inf_pcd_arr
         return pcd_world[0:3, :]
 
     def veh_side_pcd2world(self):
@@ -294,6 +294,16 @@ class CooperativeData:
         Trans2 = self.load_extrinsic(self.veh_novatel2world_path)
         pcd_world = Trans2 @ Trans1 @ veh_pcd_arr
         return pcd_world[0:3, :]
+
+    def world2inf_cam(self):
+        return np.linalg.inv(self.load_extrinsic(self.inf_lidar2world_path)) \
+                        @ self.load_extrinsic(self.inf_lidar2cam_path)
+
+    def world2veh_cam(self):
+        return np.linalg.inv(self.load_extrinsic(self.veh_lidar2novatel_path) @ \
+                             self.load_extrinsic(self.veh_novatel2world_path)) \
+                                    @ self.load_extrinsic(self.veh_lidar2cam_path)
+
 
 
 

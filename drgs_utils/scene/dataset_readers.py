@@ -828,7 +828,9 @@ def returnMultiPCD(inf_scene: Scene, veh_scene: Scene) -> Scene:
     ...
 
 def returnConbinedPCD(inf_scene: Scene, veh_scene: Scene) -> Scene:
-    ...
+    # 在世界坐标系下合并点云, 使用inf_view_veh和veh_view_inf
+
+
 
 def returnConbinedDepth(inf_scene: Scene, veh_scene: Scene) -> Scene:
     ...
