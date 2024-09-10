@@ -89,7 +89,7 @@ def CreateCamera(
 
     target = depth_map.copy()
     target = ((target != 0) * 255).astype(np.uint8) # mask
-    depthmap, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=depth_map > 0.0,
+    depth_map, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=depth_map > 0.0,
                                          depth_weight=depth_weight)
 
     # import cv2
@@ -98,9 +98,13 @@ def CreateCamera(
     # source, refined = depth_colorize_with_mask(source_depth[None, :, :],
     #                                            dmindmax=(0.0, 5.0)).squeeze(), depth_colorize_with_mask(
     #     depthmap[None, :, :], dmindmax=(20.0, 130.0)).squeeze()
-    cv2.imwrite(f"debug/{uid:03d}_source.png", (source[:, :, ::-1] * 255).astype(np.uint8))
-    cv2.imwrite(f"debug/{uid:03d}_refined.png", (refined[:, :, ::-1] * 255).astype(np.uint8))
-    cv2.imwrite(f"debug/{uid:03d}_target.png", target)
+
+    if not os.path.exists('./debug'): os.mkdir('./debug')
+
+
+    cv2.imwrite(f"./debug/{uid:03d}_source.png", (source[:, :, ::-1] * 255).astype(np.uint8))
+    cv2.imwrite(f"./debug/{uid:03d}_refined.png", (refined[:, :, ::-1] * 255).astype(np.uint8))
+    cv2.imwrite(f"./debug/{uid:03d}_target.png", target)
 
 
     return CameraInfo(uid=str(0 if type=='inf' else 1)+uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img, depth=depthmap,
