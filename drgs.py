@@ -226,8 +226,6 @@ def train_DRGS(
     # TODO: 这里只能合并点云, 两个scene还是得分开优化, 因为有两个高斯; 前面train_camera和test_camera里有随机索引, 我干脆每次随机挑一个优化
     # -> train_camera/test_camera 另外实现一个类, 调到哪个就优化哪个类
 
-
-
     # TODO: transport depth&v2x-scene here
     gaussians_inf.training_setup(opt)
     gaussians_veh.training_setup(opt)
@@ -238,11 +236,19 @@ def train_DRGS(
         # TODO: implement a class that fit a series of 3DGS
 
     # Temporary using 2 3DGS
-    omit = torch.tensor(0.5).to('cuda').reshape(1)
-    omit = torch.nn.Parameter(omit.detach().requires_grad_(True))
+    # omit = torch.tensor(0.5).to('cuda').reshape(1)
     # 变成一个带权的高斯，用来操控 重叠/空缺 部分的深度信息 -> 一个scalar可控的，用来组合场景的中间件
     # 拓展：能以可微的方式优化路端视角 -> 在真实场景中，路端视角和车端视角之间的具体变换关系可能不知道？
 
+    # Calculate a mask ?
+    foc1 = torch.ones((args.h, args.w)).to('cuda')
+    foc2 = torch.ones((args.h, args.w)).to('cuda')
+    with torch.no_grad():
+        foc1 = 0.5 * foc1
+        foc2 = 0.5 * foc2
+
+    foc1 = torch.nn.Parameter(foc1.detach().requires_grad_(True))
+    foc2 = torch.nn.Parameter(foc2.detach().requires_grad_(True))
     inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
     torch.empty_cache()
 
@@ -257,12 +263,35 @@ def train_DRGS(
     iter_start = torch.cuda.Event(enable_timing=True)
     iter_end = torch.cuda.Event(enable_timing=True)
 
+    TrainTargets = [
+        # 0 -> infrastructure side
+        {
+            'gaussian': gaussians_inf,
+            'scene': inf_scene,
+            'view': inf_view_veh  # view vehicle pcd from infrastructure side -> update
+        },
+        # 1 -> vehicle side
+        {
+            'gaussian': gaussians_veh,
+            'scene': veh_scene,
+            'view': veh_view_inf  # view infrastructure pcd from vehicle side -> update
+        }
+    ]
+
     viewpoint_stack = None
     ema_loss_for_log = 0.0
     ema_depthloss_for_log, prev_depthloss, deploss = 0.0, 1e2, torch.zeros(1)
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
     for iteration in range(first_iter, opt.iterations + 1):
+        train_now_idx = randint(0,2)
+        train_now = TrainTargets[train_now_idx]
+
+        gaussian = train_now['gaussian']
+        scene = train_now['scene']
+        view = train_now['view']
+
+
         if network_gui.conn == None:
             network_gui.try_connect()
         while network_gui.conn != None:
@@ -275,10 +304,11 @@ def train_DRGS(
                     """
                     net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
                     net_image_veh = render(custom_cam, gaussians_veh, pipe, background, scaling_modifer)["render"]
-                    print(f"[Debug] | net_image_inf.shape = {net_image_inf.shape}, net_image_veh.shape = {net_image_veh.shape}, omit.shape = {omit.shape}")
+                    print(f"[Debug] | net_image_inf.shape = {net_image_inf.shape}, net_image_veh.shape = {net_image_veh.shape}, "
+                          f"foc1.shape = {foc1.shape}, foc2.shape = {foc21.shape}")
 
                     # 这里不能简单地做叠加
-                    net_image = net_image_inf * omit + net_image_veh * (1. - omit)
+                    net_image = net_image_inf * foc1 + net_image_veh * foc2
                     net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
                 network_gui.send(net_image_bytes, dataset.source_path)
                 if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
@@ -509,6 +539,12 @@ def main():
 
     inf_view_veh = processed_dict['inf-side-veh']
     veh_view_inf = processed_dict['veh-sid-inf']
+
+    w, h = inf_side['rgb'].size()
+    if not hasattr(parser, 'w'): setattr(parser, 'w', w)
+    else: parser.w = w
+    if not hasattr(parser, 'h'): setattr(parser, 'h', h)
+    else: parser.h = h
 
     parser = parser_add(parser)
     train_DRGS(
