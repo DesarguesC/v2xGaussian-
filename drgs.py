@@ -212,11 +212,11 @@ def train_DRGS(
     # TODO: ↓ load cameras
     dair_info = sceneLoadTypeCallbacks['V2X'](dair_item)  # lidar coordinate -> world coordinate
     inf_scene = Scene(
-        model_path = dair_item.model_path, dair_info = dair_info, gaussians = gaussians_inf,
+        dair_item = dair_item, dair_info = dair_info, gaussians = gaussians_inf,
         side_info = inf_side_info, type = 'inf'
     )
     veh_scene = Scene(
-        model_path=dair_item.model_path, dair_info=dair_info, gaussians=gaussians_veh,
+        dair_item = dair_item, dair_info=dair_info, gaussians=gaussians_veh,
         side_info=veh_side_info, type='veh'
     )
 
@@ -268,13 +268,17 @@ def train_DRGS(
         {
             'gaussian': gaussians_inf,
             'scene': inf_scene,
-            'view': inf_view_veh  # view vehicle pcd from infrastructure side -> update
+            'view': inf_view_veh,  # view vehicle pcd from infrastructure side -> update
+            'foc': foc1,
+            'name': 'inf'
         },
         # 1 -> vehicle side
         {
             'gaussian': gaussians_veh,
             'scene': veh_scene,
-            'view': veh_view_inf  # view infrastructure pcd from vehicle side -> update
+            'view': veh_view_inf,  # view infrastructure pcd from vehicle side -> update
+            'foc': foc2,
+            'name': 'veh'
         }
     ]
 
@@ -290,8 +294,10 @@ def train_DRGS(
         gaussian = train_now['gaussian']
         scene = train_now['scene']
         view = train_now['view']
+        foc = train_now['foc']
 
 
+        # 当前结果实时渲染
         if network_gui.conn == None:
             network_gui.try_connect()
         while network_gui.conn != None:
@@ -302,13 +308,9 @@ def train_DRGS(
                     """
                         这里其实有问题，如果原来对点云做了合并，最终渲染得到的图片应该是更大（或一样）的，但是这里的图片肯定不是
                     """
-                    net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
-                    net_image_veh = render(custom_cam, gaussians_veh, pipe, background, scaling_modifer)["render"]
-                    print(f"[Debug] | net_image_inf.shape = {net_image_inf.shape}, net_image_veh.shape = {net_image_veh.shape}, "
-                          f"foc1.shape = {foc1.shape}, foc2.shape = {foc21.shape}")
-
-                    # 这里不能简单地做叠加
-                    net_image = net_image_inf * foc1 + net_image_veh * foc2
+                    net_image = render(custom_cam, gaussian, pipe, background, scaling_modifer)["render"]
+                    # net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
+                    print(f"[Debug] | net_image.shape = {net_image.shape}, foc.shape = {foc.shape}")
                     net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
                 network_gui.send(net_image_bytes, dataset.source_path)
                 if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
@@ -319,19 +321,17 @@ def train_DRGS(
 
         iter_start.record()
 
-        gaussians_inf.update_learning_rate(iteration)
-        gaussians_veh.update_learning_rate(iteration)
+        gaussian.update_learning_rate(iteration)
 
         # Every 1000 its we increase the levels of SH up to a maximum degree
         if iteration % 1000 == 0:
             if not (usedepth and iteration >= 2000):
-                gaussians_inf.oneupSHdegree()
-                gaussians_veh.oneupSHdegree()
+                gaussian.oneupSHdegree()
 
         # Pick a random Camera
         if not viewpoint_stack:
             viewpoint_stack = scene.getTrainCameras().copy()
-        viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1)) # 弹出任意位置的元素(并删除)，非严格的栈结构
+        viewpoint = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1)) # 弹出任意位置的元素(并删除)，非严格的栈结构
         # TODO: 原始DRGS代码再viewpoint_cam.original_depth和viewpoint_cam.original_iamge处提供了ground truth，我换个地方提供
 
         # Render
@@ -341,8 +341,8 @@ def train_DRGS(
         bg = torch.rand((3), device="cuda") if opt.random_background else background
 
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
-        render_pkg_inf = render(viewpoint_cam, gaussians_inf, pipe, bg)
-        render_pkg_veh = render(viewpoint_cam, gaussians_veh, pipe, bg)
+        render_pkg = render(viewpoint, gaussians, pipe, bg)
+        # render_pkg_veh = render(viewpoint_cam, gaussians_veh, pipe, bg)
 
         # weighted
         image_inf, image_veh = render_pkg_inf["render"], render_pkg_veh["render"]

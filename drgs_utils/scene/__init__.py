@@ -12,11 +12,12 @@
 import os
 import random
 import json
+from PIL import Image
 
 import numpy as np
 
 from ..utils.system_utils import searchForMaxIteration
-from ..scene.dataset_readers import sceneLoadTypeCallbacks, sceneConbinationCallbacks
+from ..scene.dataset_readers import sceneLoadTypeCallbacks, sceneConbinationCallbacks, optimize_depth, CameraInfo
 from ..scene.gaussian_model import GaussianModel
 from .. import ModelParams
 from ..utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
@@ -55,6 +56,56 @@ def Bind_v2x_pcd(dair: Dair_v2x_Info, inference_mode=False) -> tuple[BasicPointC
     return (panoptic_pcd, inf_pcd, veh_pcd)
 
 
+def CreateCamera(
+        dair_item: CooperativeData, dair_info: Dair_v2x_Info,
+        side_info: dict, pcd_file: BasicPointCloud,
+        type: str = 'inf', white_background: bool = False
+    ):
+    uid = str(getattr(dair_item, f'{type}_id'))
+    bg = np.array([1, 1, 1, 0]) if white_background else np.array([0, 0, 0, 0])
+
+    cam_intrinsic = getattr(dair_info, f'{type}_cam_K') # dict
+    cam_K = cam_intrinsic['cam_K'] # 'K_matrix'
+    height, width = cam_intrinsic['height'], cam_intrinsic['width']
+    cam_extrinsic = getattr(dair_info, f'lidar2cam_{type}')  # np.array
+
+    R, T = cam_extrinsic[0:3,0:3], cam_extrinsic[0:3, 3]
+    FovX, FovY = cam_K[0,0], cam_K[1,1]
+
+    depth_map, depth_weight = np.zeros(height, width), np.zeros(height, width)
+    cam_coord = np.matmul(cam_K, np.matmul(R.transpose(), pcd_file.points.transpose()) + T.reshape(3, 1))
+    ### for coordinate definition, see getWorld2View2() function
+    valid_idx = np.where(np.logical_and.reduce((cam_coord[2] > 0, cam_coord[0] / cam_coord[2] >= 0,
+                                                cam_coord[0] / cam_coord[2] <= width - 1,
+                                                cam_coord[1] / cam_coord[2] >= 0,
+                                                cam_coord[1] / cam_coord[2] <= height - 1)))[0]
+    pts_depths = cam_coord[-1:, valid_idx]
+    cam_coord = cam_coord[:2, valid_idx] / cam_coord[-1:, valid_idx]
+    depth_map[np.round(cam_coord[1]).astype(np.int32).clip(0, height - 1), np.round(cam_coord[0]).astype(np.int32).clip(0, width - 1)] = pts_depths
+    depth_weight[np.round(cam_coord[1]).astype(np.int32).clip(0, height - 1), np.round(cam_coord[0]).astype(np.int32).clip(0, width - 1)] = 1
+    depth_weight = depth_weight / depth_weight.max()
+
+    rgb_img, source_depth = side_info['rgb'], side_info['depth']['panoptic']
+
+    target = depth_map.copy()
+    target = ((target != 0) * 255).astype(np.uint8) # mask
+    depthmap, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=depth_map > 0.0,
+                                         depth_weight=depth_weight)
+
+    # import cv2
+    # from render import depth_colorize_with_mask
+    #
+    # source, refined = depth_colorize_with_mask(source_depth[None, :, :],
+    #                                            dmindmax=(0.0, 5.0)).squeeze(), depth_colorize_with_mask(
+    #     depthmap[None, :, :], dmindmax=(20.0, 130.0)).squeeze()
+    cv2.imwrite(f"debug/{uid:03d}_source.png", (source[:, :, ::-1] * 255).astype(np.uint8))
+    cv2.imwrite(f"debug/{uid:03d}_refined.png", (refined[:, :, ::-1] * 255).astype(np.uint8))
+    cv2.imwrite(f"debug/{uid:03d}_target.png", target)
+
+
+    return CameraInfo(uid=str(0 if type=='inf' else 1)+uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img, depth=depthmap,
+               depth_weight=depth_weight, image_path=getattr(dair_item, f'{type}_img_path'),
+               image_name=uid, width=width, height=height, depthloss=depthloss)
 
 
 
@@ -63,11 +114,11 @@ class Scene:
     gaussians : GaussianModel
     # multi Gaussian -> i.e., using multi class<Scene>
 
-    def __init__(self, model_path, dair_info: Dair_v2x_Info, gaussians : GaussianModel, type: str='inf', side_info: dict=None, shuffle: bool=True, resolution_scales=[1.0]):
+    def __init__(self, dair_item: CooperativeData, dair_info: Dair_v2x_Info, gaussians : GaussianModel, type: str='inf', side_info: dict=None, shuffle: bool=True, resolution_scales=[1.0]):
         """b
         :param path: Path to colmap scene main folder.
         """
-        self.model_path = model_path # dair path
+        self.model_path = dair_item.model_path # dair path
         self.teyp = type
         anti_type = 'inf' if type == 'veh' else 'veh'
         self.gaussians = gaussians
@@ -95,7 +146,18 @@ class Scene:
         self.gaussians.create_from_pcd(getattr(dair_info, f'{type}_pcd'), self.cameras_extent)
 
         self.train_cameras, self.test_cameras = {}, {}
+
+
+        # cameraList_from_camInfos
+        camera_info = CreateCamera(dair_info, type)
+
+
+
         for scale in resolution_scales:
+            train_camera_list = [
+
+            ]
+            cameraList_from_camInfos(?, scale, args)
             self.train_cameras[scale] = {
                 'intrinsics': getattr(dair_info, f'normalization_{type}'),
                 'world2cam': getattr(dair_info, f'world2cam_{type}'),
