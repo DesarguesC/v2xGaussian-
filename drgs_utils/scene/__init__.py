@@ -15,7 +15,7 @@ import json
 from PIL import Image
 
 import numpy as np
-
+from .dataset_readers import SceneInfo
 from ..utils.system_utils import searchForMaxIteration
 from ..scene.dataset_readers import sceneLoadTypeCallbacks, sceneConbinationCallbacks, optimize_depth, CameraInfo
 from ..scene.gaussian_model import GaussianModel
@@ -112,7 +112,7 @@ def CreateCamera(
     cv2.imwrite(f"./debug/{uid:03d}_target.png", target)
 
 
-    return CameraInfo(uid=str(0 if type=='inf' else 1)+uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img, depth=depthmap,
+    return CameraInfo(uid=str(0 if type=='inf' else 1)+uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img, depth=depth_map,
                depth_weight=depth_weight, image_path=getattr(dair_item, f'{type}_img_path'),
                image_name=uid, width=width, height=height, depthloss=depthloss)
 
@@ -123,7 +123,13 @@ class Scene:
     gaussians : GaussianModel
     # multi Gaussian -> i.e., using multi class<Scene>
 
-    def __init__(self, dair_item: CooperativeData, dair_info: Dair_v2x_Info, gaussians : GaussianModel, type: str='inf', side_info: dict=None, shuffle: bool=True, resolution_scales=[1.0]):
+    def __init__(
+            self, args: ModelParams, dair_item: CooperativeData,
+            dair_info: Dair_v2x_Info, gaussians : GaussianModel,
+            type: str='inf', seed=0, side_info: dict=None,
+            shuffle: bool=True, eval: bool = False,
+            resolution_scales=[1.0]
+    ):
         """b
         :param path: Path to colmap scene main folder.
         """
@@ -154,35 +160,45 @@ class Scene:
         # panoptic_pcd, inf_pcd, veh_pcd = Bind_v2x_pcd(dair_info)
         self.gaussians.create_from_pcd(getattr(dair_info, f'{type}_pcd'), self.cameras_extent)
 
-        self.train_cameras, self.test_cameras = {}, {}
-
-
         # cameraList_from_camInfos
-        camera_info = CreateCamera(dair_info, type)
+        cam_infos = [CreateCamera(dair_info, type_) for type_ in [type, anti_type]]
+        train_cam_infos = [cam_infos[0]] if eval else cam_infos # 当前type必然参与训练
+        test_cam_infos = [cam_infos[1]] if eval else []
 
 
+        np.random.seed(seed)
+        scene_info = SceneInfo(point_cloud=getattr(dair_info, f'{type}_pcd'),
+                           train_cameras=train_cam_infos,
+                           test_cameras=test_cam_infos,
+                           nerf_normalization=self.cameras_extent,
+                           ply_path=getattr(dair_item, f'{type}_ply_store_path')
+                        )
+
+        self.train_cameras, self.test_cameras = {}, {}
+        # self.train_cameras[]
 
         for scale in resolution_scales:
-            train_camera_list = [
-
-            ]
-            cameraList_from_camInfos(?, scale, args)
-            self.train_cameras[scale] = {
-                'intrinsics': getattr(dair_info, f'normalization_{type}'),
-                'world2cam': getattr(dair_info, f'world2cam_{type}'),
-                'lidar2cam': getattr(dair_info, f'lidar2cam_{type}'),
-                'original_image': getattr(dair_info, f'{type}_rgb'),
-                'original_depth': getattr(dair_info, f'{type}_depth'),
-                f'{type}2{anti_type}': dair_info.inf2veh_matrix if type=='inf' else np.lialg.inv(dair_info.inf2veh_matrix)
-            }
-            self.test_cameras[scale] = {
-                'intrinsics': getattr(dair_info, f'normalization_{anti_type}'),
-                'world2cam': getattr(dair_info, f'world2cam_{anti_type}'),
-                'lidar2cam': getattr(dair_info, f'lidar2cam_{anti_type}'),
-                'original_image': getattr(dair_info, f'{anti_type}_rgb'),
-                'original_depth': getattr(dair_info, f'{anti_type}_depth'),
-                f'{anti_type}2{type}': dair_info.inf2veh_matrix if type == 'inf' else np.lialg.inv(dair_info.inf2veh_matrix)
-            }
+            print("Loading Training Cameras")
+            self.train_cameras[scale] = cameraList_from_camInfos(scene_info.train_cameras, scale, args)
+            print("Loading Test Cameras")
+            self.test_cameras[scale] = cameraList_from_camInfos(scene_info.test_cameras, scale, args)
+            # cameraList_from_camInfos(?, scale, args)
+            # self.train_cameras[scale] = {
+            #     'intrinsics': getattr(dair_info, f'normalization_{type}'),
+            #     'world2cam': getattr(dair_info, f'world2cam_{type}'),
+            #     'lidar2cam': getattr(dair_info, f'lidar2cam_{type}'),
+            #     'original_image': getattr(dair_info, f'{type}_rgb'),
+            #     'original_depth': getattr(dair_info, f'{type}_depth'),
+            #     f'{type}2{anti_type}': dair_info.inf2veh_matrix if type=='inf' else np.lialg.inv(dair_info.inf2veh_matrix)
+            # }
+            # self.test_cameras[scale] = {
+            #     'intrinsics': getattr(dair_info, f'normalization_{anti_type}'),
+            #     'world2cam': getattr(dair_info, f'world2cam_{anti_type}'),
+            #     'lidar2cam': getattr(dair_info, f'lidar2cam_{anti_type}'),
+            #     'original_image': getattr(dair_info, f'{anti_type}_rgb'),
+            #     'original_depth': getattr(dair_info, f'{anti_type}_depth'),
+            #     f'{anti_type}2{type}': dair_info.inf2veh_matrix if type == 'inf' else np.lialg.inv(dair_info.inf2veh_matrix)
+            # }
 
 
 # , json_cams, self.gaussian.load_ply,

@@ -192,7 +192,7 @@ def train_DRGS(
 
     """
 
-    gt_depth_inf_dict, gt_depth_veh_dict = inf_side_info['depth'], veh_side_info['depth']
+
 
     dataset, opt, pipe = create_params(args)
     testing_iterations = args.test_iterations
@@ -212,12 +212,12 @@ def train_DRGS(
     # TODO: ↓ load cameras
     dair_info = sceneLoadTypeCallbacks['V2X'](dair_item)  # lidar coordinate -> world coordinate
     inf_scene = Scene(
-        dair_item = dair_item, dair_info = dair_info, gaussians = gaussians_inf,
-        side_info = inf_side_info, type = 'inf'
+        args = dataset, dair_item = dair_item, dair_info = dair_info,
+        gaussians = gaussians_inf, side_info = inf_side_info, type = 'inf'
     )
     veh_scene = Scene(
-        dair_item = dair_item, dair_info=dair_info, gaussians=gaussians_veh,
-        side_info=veh_side_info, type='veh'
+        args = dataset, dair_item = dair_item, dair_info=dair_info,
+        gaussians=gaussians_veh, side_info=veh_side_info, type='veh'
     )
 
     # 在世界坐标系下合并点云, 使用inf_view_veh和veh_view_inf
@@ -249,7 +249,7 @@ def train_DRGS(
 
     foc1 = torch.nn.Parameter(foc1.detach().requires_grad_(True))
     foc2 = torch.nn.Parameter(foc2.detach().requires_grad_(True))
-    inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
+    # inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
     torch.empty_cache()
 
     # TODO-1: find where to read camera intrinsics/extrinsics, amend them respectively.
@@ -268,6 +268,8 @@ def train_DRGS(
         {
             'gaussian': gaussians_inf,
             'scene': inf_scene,
+            'mask': inf_side_info['mask'], # fg-mask
+            'depth': inf_side_info['depth'],
             'view': inf_view_veh,  # view vehicle pcd from infrastructure side -> update
             'foc': foc1,
             'name': 'inf'
@@ -276,6 +278,8 @@ def train_DRGS(
         {
             'gaussian': gaussians_veh,
             'scene': veh_scene,
+            'mask': veh_side_info['mask'], # fg-mask
+            'depth': veh_side_info['depth'],
             'view': veh_view_inf,  # view infrastructure pcd from vehicle side -> update
             'foc': foc2,
             'name': 'veh'
@@ -293,8 +297,14 @@ def train_DRGS(
 
         gaussian = train_now['gaussian']
         scene = train_now['scene']
-        view = train_now['view']
+        fg_mask = train_now['mask']
+        with torch.no_grad():
+            bg_mask = 1. - fg_mask
+        dep = train_now['depth']['panoptic'][-1] # panoptic, uncolored
+        viewer_depth = train_now['view']
         foc = train_now['foc']
+        extra_name = train_now['name']
+
 
 
         # 当前结果实时渲染
@@ -341,71 +351,39 @@ def train_DRGS(
         bg = torch.rand((3), device="cuda") if opt.random_background else background
 
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
-        render_pkg = render(viewpoint, gaussians, pipe, bg)
-        # render_pkg_veh = render(viewpoint_cam, gaussians_veh, pipe, bg)
-
-        # weighted
-        # image_inf, image_veh = render_pkg_inf["render"], render_pkg_veh["render"]
-        image = render_pkg["render"]
-
-        # viewspace_point_tensor = torch.zeros_like(
-        #     torch.cat([gaussians_inf.get_xyz, gaussians_veh.get_xyz], dim=1), dtype=gaussians_inf.get_xyz.dtype, requires_grad=True, device="cuda"
-        # ) + 0
-
+        render_pkg = render(viewpoint, gaussian, pipe, bg)
+        image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
+        depth_rendered = foc1 * depth_rendered + foc2 * viewer_depth
         # TODO: Bind
         # 如何合并？radii, visibility_filter都是用来控制GS球分裂&合并的，Densification
-        # visibility_filter_inf, radii_inf, viewspace_point_tensor_inf = render_pkg_inf["visibility_filter"], render_pkg_inf["radii"], render_pkg_inf['viewspace_points']
-        visibility_filter_veh, radii_veh, viewspace_point_tensor_veh = render_pkg["visibility_filter"], render_pkg["radii"], render_pkg['viewspace_points']
+        visibility_filter, radii, viewspace_point_tensor = render_pkg["visibility_filter"], render_pkg["radii"], render_pkg['viewspace_points']
 
         # Loss
         # gt_image = viewpoint_cam.original_image.cuda()
         # TODO: rgb的损失要分别传给对应的GS, depth是一起渲染的, 一起传播 | 修改上面这行代码，以及对应到的class下的成员读取
-        gt_image = viewpoint.
+        gt_image, gt_depth = viewpoint.original_image, viewpoint.original_depth
         # gt_image_inf, gt_image_veh = ...?
-        Ll1 = l1_loss(image_inf, gt_image_inf) * omit + l1_loss(image_veh, gt_image_veh) * (1. - omit)
-        # loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
-        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * \
-               (1.0 - ssim(image_inf, gt_image_inf) * omit - ssim(image_veh, gt_image_veh) * (1. - omit))
+        Ll1 = l1_loss(gt_image, image_side_rendered)
 
+        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 \
+                   - ssim(image_side_rendered * fg_mask, gt_image * fg_mask)\
+                   - ssim(image_side_rendered * bg_mask, gt_image * bg_mask))
 
-        ### depth supervised loss
-        depth_inf, depth_veh = render_pkg_inf["depth"], render_pkg_veh["depth"]
-        # if usedepth and viewpoint_cam.original_depth is not None:
-        if usedepth:
-            # depth_mask = inf_fg_mask if gaussians is gaussians_inf else veh_fg_mask  # render_pkg["acc"][0]
-            gt_maskeddepth_inf_fg = (gt_depth_inf_dict['fg'] * inf_fg_mask).cuda()
-            gt_maskeddepth_inf_bg = (gt_depth_inf_dict['bg'] * (1.-inf_fg_mask)).cuda()
-            gt_maskeddepth_veh_fg = (gt_depth_veh_dict['fg'] * veh_fg_mask).cuda()
-            gt_maskeddepth_veh_bg = (gt_depth_veh_dict['dg'] * (1.-veh_fg_mask)).cuda()
-            if args.white_background:  # for 360 datasets ...
-                gt_maskeddepth_inf_fg = normalize_depth(gt_maskeddepth_inf_fg)
-                gt_maskeddepth_inf_bg = normalize_depth(gt_maskeddepth_inf_bg)
-                gt_maskeddepth_veh_fg = normalize_depth(gt_maskeddepth_veh_fg)
-                gt_maskeddepth_veh_bg = normalize_depth(gt_maskeddepth_veh_bg)
+        depth_rendered = normalize_depth(depth_rendered)
 
-                depth_inf = normalize_depth(depth_inf)
-                depth_veh = normalize_depth(depth_veh)
-
-            deploss = l1_loss(gt_maskeddepth_inf_fg, depth_inf * inf_fg_mask) * 0.5 + \
-                      l1_loss(gt_maskeddepth_inf_bg, depth_inf * (1. - inf_fg_mask)) * 0.5 + \
-                      l1_loss(gt_maskeddepth_veh_fg, depth_veh * veh_fg_mask) * 0.5 + \
-                      l1_loss(gt_maskeddepth_veh_bg, depth_veh * (1. - veh_fg_mask)) * 0.5
-
-            loss = loss + deploss
+        deploss = 0.5 * l1_loss((dep * fg_mask).cuda(), (depth_rendered * fg_mask).cuda()) + 0.5 * l1_loss((dep * bg_mask).cuda(), (depth_rendered * bg_mask).cuda())
+        loss = loss + deploss
 
         ## depth regularization loss (canny)
         if usedepthReg and iteration >= 0:
-
-            depth_mask_inf, depth_mask_veh = (depth_inf > 0).detach(), (depth_veh > 0).detach()
+            depth_mask = (depth_rendered > 0).detach()
+            # depth_mask_inf, depth_mask_veh = (depth_inf > 0).detach(), (depth_veh > 0).detach()
             # Ori Name: nearDepthMean_map
-            map_inf = nearMean_map(depth_inf, viewpoint_cam.canny_mask * depth_mask_inf, kernelsize=3)
-            map_veh = nearMean_map(depth_veh, viewpoint_cam.canny_mask * depth_mask_veh, kernelsize=3)
-            loss = loss + l2_loss(map_inf, depth_inf * depth_mask_inf) * 1.0 + l2_loss(map_veh, depth_veh * depth_mask_veh) * 1.0
-
-
+            depth_map = nearMean_map(depth_mask, viewpoint.canny_mask * depth_mask, kernelsize=3)
+            # map_veh = nearMean_map(depth_veh, viewpoint.canny_mask * depth_mask_veh, kernelsize=3)
+            loss = loss + l2_loss(depth_map, depth_rendered * depth_mask) * 1.0 + l2_loss(depth_map, depth_rendered * depth_mask) * 1.0
 
         loss.backward()
-
         iter_end.record()
 
         with torch.no_grad():
@@ -415,7 +393,7 @@ def train_DRGS(
             if iteration % 10 == 0:
                 progress_bar.set_postfix(
                     {"Loss": f"{ema_loss_for_log:.{7}f}", "Deploss": f"{ema_depthloss_for_log:.4f}",
-                     "#pts": gaussians._xyz.shape[0]})
+                     "#pts": gaussian._xyz.shape[0]})
                 progress_bar.update(10)
 
             if iteration % 100 == 0:
@@ -440,39 +418,33 @@ def train_DRGS(
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
 
-            # TODO: Respectively
-            for gaussian_item in [
-                (gaussians_inf, visibility_filter_inf, radii_inf, viewspace_point_tensor_inf, 'inf'),
-                (gaussians_veh, visibility_filter_veh, radii_veh, viewspace_point_tensor_veh, 'veh')
-            ]:
-                gaussians, visibility_filter, radii, viewspace_point_tensor, data_type = gaussian_item
             # Densification
-                if iteration < opt.densify_until_iter and ((not usedepth) or gaussians._xyz.shape[0] <= 1500000):
-                    # Keep track of max radii in image-space for pruning
-                    gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter],
-                                                                         radii[visibility_filter])
-                    gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
+            if iteration < opt.densify_until_iter and ((not usedepth) or gaussian._xyz.shape[0] <= 1500000):
+                # Keep track of max radii in image-space for pruning
+                gaussian.max_radii2D[visibility_filter] = torch.max(gaussian.max_radii2D[visibility_filter],
+                                                                     radii[visibility_filter])
+                gaussian.add_densification_stats(viewspace_point_tensor, visibility_filter)
 
-                    if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
-                        size_threshold = 20 if iteration > opt.opacity_reset_interval else None
-                        # camera_extent ?
-                        gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent,
-                                                    size_threshold)
+                if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
+                    size_threshold = 20 if iteration > opt.opacity_reset_interval else None
+                    # camera_extent ?
+                    gaussian.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent,
+                                                size_threshold)
 
-                    if not usedepth:
-                        if iteration % opt.opacity_reset_interval == 0 or (
-                                dataset.white_background and iteration == opt.densify_from_iter):
-                            gaussians.reset_opacity()
+                if not usedepth:
+                    if iteration % opt.opacity_reset_interval == 0 or (
+                            dataset.white_background and iteration == opt.densify_from_iter):
+                        gaussian.reset_opacity()
 
 
                 # Optimizer step
                 if iteration < opt.iterations:
-                    gaussians.optimizer.step()
-                    gaussians.optimizer.zero_grad(set_to_none=True)
+                    gaussian.optimizer.step()
+                    gaussian.optimizer.zero_grad(set_to_none=True)
 
                 if (iteration in checkpoint_iterations):
                     print("\n[ITER {}] Saving Checkpoint".format(iteration))
-                    torch.save((gaussians.capture(), iteration), scene.model_path + f"/{data_type}-chkpnt" + str(iteration) + ".pth")
+                    torch.save((gaussian.capture(), iteration), scene.model_path + f"/{extra_name}-chkpnt" + str(iteration) + ".pth")
 
     pass
 

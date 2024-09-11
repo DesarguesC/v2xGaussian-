@@ -117,7 +117,7 @@ class CooperativeData:
 
         if path is None:
             path = '..'
-            self.model_path = path
+        self.model_path = path
         self.inf_id = re.split('[/\.]', dair['infrastructure_image_path'])[-2]
         self.veh_id = re.split('[/\.]', dair['vehicle_image_path'])[-2]
         #
@@ -187,8 +187,11 @@ class CooperativeData:
 
     def set_downsample(self, downsample):
         self.downsample = downsample
-        self.camera_intrinsic['width'] = ab64(self.camera_intrinsic['width'])
-        self.camera_intrinsic['height'] = ab64(self.camera_intrinsic['height'])
+        u = load_camera_intrinsic(
+            os.path.join(f'{self.model_path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/camera_intrinsic', f'{self.inf_id}.json'), downsample=self.downsample, return_dict=True)
+        self.camera_intrinsic = u['intrinsic']
+        # self.camera_intrinsic['width'] = ab64(self.camera_intrinsic['width'])
+        # self.camera_intrinsic['height'] = ab64(self.camera_intrinsic['height'])
         self.inf_side_img = downsampler(self.inf_side_img, self.downsample)
         self.veh_side_img = downsampler(self.veh_side_img, self.downsample)
 
