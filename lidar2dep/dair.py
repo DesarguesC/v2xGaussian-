@@ -1,3 +1,5 @@
+import pudb
+
 BASE_DIR = './cooperative-vehicle-infrastructure'
 # TODO: read DAIR-V2X dataset
 import os, json, cv2, re, pdb
@@ -7,9 +9,11 @@ from matplotlib import pyplot as plt
 from lidar2dep.main import get_CompletionFormer as getFormer
 from lidar2dep.main import create_former_input
 from PIL import Image
+from cam_utils import ab64, downsampler
 
 
-def load_camera_intrinsic(json_path, return_dict=False):
+
+def load_camera_intrinsic(json_path, downsample: int = 1, return_dict: bool = False):
     # ./infrastructure-side/calib/camera_intrinc
     """
 
@@ -30,6 +34,7 @@ def load_camera_intrinsic(json_path, return_dict=False):
     # camera_id = ex['cameraID']
     print(f'ex is None: {ex is None}')
     h, w = ex['height'], ex['width']
+    h, w = ab64((h // downsample, w // downsample))
     # projection = ex['P']
     # cam_D, cam_K = ex['cam_D'], ex['cam_K']
     # cam_D = np.array(ex['cam_D'], dtype=np.float32)
@@ -105,9 +110,11 @@ class DAIR_V2X_C:
         return len(self.items)
     
 class CooperativeData:
-    def __init__(self, dair, path=None):
+    def __init__(self, dair, path: str = None, downsample: int = 1):
         # When initailizing, set path as the base direction where DAIR-V2X locates
         # dair: DAIR_V2X_C[idx]
+        self.downsample = int(downsample)
+
         if path is None:
             path = '..'
             self.model_path = path
@@ -127,7 +134,7 @@ class CooperativeData:
         #
         # self.offset_dict = dair['system_error_offset']
         #
-        u = load_camera_intrinsic(os.path.join(f'{path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/camera_intrinsic', f'{self.inf_id}.json'), return_dict=True)
+        u = load_camera_intrinsic(os.path.join(f'{path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/camera_intrinsic', f'{self.inf_id}.json'), downsample=self.downsample, return_dict=True)
         self.camera_intrinsic = u['intrinsic']
         self.inf_ex = u['extrinsic']
         self.camera_intrinsic_matrix = u['intrinsic_matrix']
@@ -168,8 +175,22 @@ class CooperativeData:
             if not os.path.exists(veh_init): os.mkdir(veh_init)
         self.veh_ply_store_path = os.path.join(veh_init, f'{self.veh_id}.ply')
 
-        # self.inf_side_img = Image.open(self.inf_img_path)
-        # self.veh_side_img = Image.open(self.veh_img_path)
+        try:
+            self.inf_side_img = Image.open(self.inf_img_path)
+            self.veh_side_img = Image.open(self.veh_img_path)
+        except Exception as err:
+            print(f'err: {err}')
+            pudb.set_trace()
+
+        self.inf_side_img = downsampler(self.inf_side_img, self.downsample)
+        self.veh_side_img = downsampler(self.veh_side_img, self.downsample)
+
+    def set_downsample(self, downsample):
+        self.downsample = downsample
+        self.camera_intrinsic['width'] = ab64(self.camera_intrinsic['width'])
+        self.camera_intrinsic['height'] = ab64(self.camera_intrinsic['height'])
+        self.inf_side_img = downsampler(self.inf_side_img, self.downsample)
+        self.veh_side_img = downsampler(self.veh_side_img, self.downsample)
 
 
 
@@ -183,6 +204,7 @@ class CooperativeData:
         ax1.set_title(f'{which}-side')
 
         ax2 = fig.add_subplot(1, 2, 2)
+
         side_pcd_img = render_pcd_view_img(
                 getattr(self, f'{which}_side_pcd'), 
                 self.camera_intrinsic, 
@@ -196,7 +218,6 @@ class CooperativeData:
         plt.show()
         
         return getattr(self, f'{which}_side_img'), side_pcd_img
-
     def get_side(self, which='inf'):
         assert which in ['inf', 'veh'], which
         side_img = getattr(self, f'{which}_side_img')
@@ -207,7 +228,6 @@ class CooperativeData:
                 getattr(self, f'{which}_side_img').shape
             )
         return side_img, pcd_rendered
-
     def get_side_and_depth(self, opt, which='inf', former=None, w=0.3):
         assert which in ['inf', 'veh'], which
         if former is None:
@@ -241,7 +261,7 @@ class CooperativeData:
         # get a point: arr[:,idx]
         return pcd, new_arr.T
 
-    def load_intrinsic(self, path, matrix_read_only = False):
+    def load_intrinsic(self, path, matrix_read_only = False, downsample: int = None):
         with open(path) as f:
             ff = json.load(f)
         cam_K = ff['cam_K']
@@ -250,8 +270,11 @@ class CooperativeData:
         if matrix_read_only: return K
 
         height = ff['height']
-        weight = ff['width']
-        return height, weight, K
+        width = ff['width']
+        if downsample is None: downsample = self.downsample
+        height, width = ab64((height // downsample, width // downsample))
+
+        return height, width, K
 
     def intrinsic2dict(self, h, w, K):
         # print(f'h = {h}, w = {w}, K ={K}')

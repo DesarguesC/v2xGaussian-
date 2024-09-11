@@ -1,7 +1,43 @@
 import numpy as np
+import pudb, cv2
 from scipy.spatial.transform import Rotation as R
-
+from PIL import Image, ImageOps
 import torch
+
+
+
+def ab64(x):
+    if isinstance(x, int):
+        return int(x/64+0.5)*64
+    # tuple sizes 2
+    return int(x[0]/64+0.5)*64, int(x[1]/64+0.5)*64
+
+def downsampler(img: any, downsample: int):
+    if not isinstance(downsample, int):
+        try:
+            downsample = int(downsample)
+        except Exception as err:
+            print(f'err: {err}')
+            pudb.set_trace()
+
+    if isinstance(img, np.ndarray):
+        img = img.squeeze()
+        if len(img.shape) < 3:
+            h, w = img.shape
+        else:
+            h, w, _ = img.shape
+        return cv2.resize(img, ab64((w // downsample, h // downsample)))
+
+    elif isinstance(img, Image):
+        w, h = img.size()
+        w, h = ab64((w // downsample, h // downsample))
+        return ImageOps.fit(img, (w,h), method=Image.Resampling.BILINEAR)
+
+    else:
+        print(f'type(img) = {type(img)}')
+        return None
+
+
 
 def dot(x, y):
     if isinstance(x, np.ndarray):

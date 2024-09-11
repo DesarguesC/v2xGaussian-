@@ -2,6 +2,7 @@ import os, glob, cv2, argparse, torch, rembg, sys, pdb
 import numpy as np
 import open3d as o3d
 from PIL import Image
+from cam_utils import downsampler
 from lidar2dep.config import Get_Merged_Args, get_args_parser
 from lidar2dep.main import Args2Results, Direct_Renderring
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
@@ -28,7 +29,7 @@ def process_first(
     # parser.add_argument('--path', default="./data/test1.jpg", type=str, help="path to image (png, jpeg, etc.)")
     # parser.add_argument('--model', default='u2net', type=str, help="rembg model, see https://github.com/danielgatis/rembg#models")
     parser.add_argument('--size', default=256, type=int, help="output resolution")
-    parser.add_argument('--downsample', default=2, type=int, help="downsample scale")
+    parser.add_argument('--downsample', default=4, type=int, help="downsample scale")
     parser.add_argument('--border_ratio', default=0.2, type=float, help="output border ratio")
     parser.add_argument('--recenter', type=bool, default=True, help="recenter, potentially not helpful for multiview zero123")
     # SEEM
@@ -43,6 +44,7 @@ def process_first(
     parser.add_argument('--results', type=str, default='../v2x-outputs/pre-process/', help='result direction')
     print(f'parser = {parser}')
     opt = get_args_parser(parser=parser)
+    dair_item.set_downsample(opt.downsample)
 
     # if dair_item is not None:
     #     opt.rgb_file_path = rgb_file_path
@@ -129,6 +131,7 @@ def process_first(
         # load image
         print(f'[INFO] loading image {rgb_file}...')
         image = Image.open(rgb_file) # RGB Image
+        image = downsampler(image, parser.downsample)
 
         # TODO: use seem to remove foreground
         print(f'[INFO] background removal...')

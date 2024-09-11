@@ -166,7 +166,9 @@ def main():
 def Args2Results(
         opt, rgb_file = None, pcd_file_path = None,
         intrinsics = None, extrinsics = None,
-        fg_mask=None, new_path=True, extra_name='fg'):
+        fg_mask=None, new_path=True, extra_name='fg'
+    ):
+
     I_dict = pre_read(
                 depth_path = opt.depth_path,
                 rgb_file_path = opt.rgb_file_path if rgb_file is None else rgb_file,
@@ -187,8 +189,8 @@ def Args2Results(
         depth = depth.unsqueeze(0)
 
     assert len(rgb.shape) == 4 and len(depth.shape) == 4, f'rgb.shape = {rgb.shape}, dep.shape = {depth.shape}'
-    rgb_size = get_new_size(rgb.shape)
-    dep_size = get_new_size(depth.shape)
+    # rgb_size = get_new_size(rgb.shape)
+    # dep_size = get_new_size(depth.shape)
     rgb = Inter(torch.tensor(rgb, dtype=torch.float32), size=rgb_size, mode="bilinear")
     depth = Inter(torch.tensor(depth, dtype=torch.float32), size=dep_size, mode="bilinear")
 
