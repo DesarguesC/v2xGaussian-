@@ -240,15 +240,22 @@ def train_DRGS(
     # 变成一个带权的高斯，用来操控 重叠/空缺 部分的深度信息 -> 一个scalar可控的，用来组合场景的中间件
     # 拓展：能以可微的方式优化路端视角 -> 在真实场景中，路端视角和车端视角之间的具体变换关系可能不知道？
 
-    # Calculate a mask ?
-    foc1 = torch.ones((args.h, args.w)).to('cuda')
-    foc2 = torch.ones((args.h, args.w)).to('cuda')
-    with torch.no_grad():
-        foc1 = 0.5 * foc1
-        foc2 = 0.5 * foc2
 
-    foc1 = torch.nn.Parameter(foc1.detach().requires_grad_(True))
-    foc2 = torch.nn.Parameter(foc2.detach().requires_grad_(True))
+    meta = torch.zeros((args.h, args.w)).to('cuda')
+    h_, w_ = args.h//8, args.w//8
+    meta_valid = torch.ones((h_*7, w_*7)).to('cuda')
+    meta[h_:args-h_, w_:args-w_] = meta_valid
+    meta = torch.nn.Parameter(meta.detach().requires_grad_(True))
+
+    # Calculate a mask ?
+    with torch.no_grad():
+        foc1_a = 0.5 * meta.copy()
+        foc1_b = 0.5 * meta.copy()
+        foc2_a = 0.5 * meta.copy()
+        foc2_b = 0.5 * meta.copy()
+
+    # foc1 = torch.nn.Parameter(foc1.detach().requires_grad_(True))
+    # foc2 = torch.nn.Parameter(foc2.detach().requires_grad_(True))
     # inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
     torch.empty_cache()
 
@@ -271,7 +278,7 @@ def train_DRGS(
             'mask': inf_side_info['mask'], # fg-mask
             'depth': inf_side_info['depth'],
             'view': inf_view_veh,  # view vehicle pcd from infrastructure side -> update
-            'foc': foc1,
+            'foc': [foc1_a, foc1_b],
             'name': 'inf'
         },
         # 1 -> vehicle side
@@ -281,7 +288,7 @@ def train_DRGS(
             'mask': veh_side_info['mask'], # fg-mask
             'depth': veh_side_info['depth'],
             'view': veh_view_inf,  # view infrastructure pcd from vehicle side -> update
-            'foc': foc2,
+            'foc': [foc2_a, foc2_b],
             'name': 'veh'
         }
     ]
@@ -353,7 +360,8 @@ def train_DRGS(
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
         render_pkg = render(viewpoint, gaussian, pipe, bg)
         image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
-        depth_rendered = foc1 * depth_rendered + foc2 * viewer_depth
+        depth_rendered = foc[0] * depth_rendered + foc[1]viewer_depth
+        # foc * depth_rendered ? foc * viewer_depth ?
         # TODO: Bind
         # 如何合并？radii, visibility_filter都是用来控制GS球分裂&合并的，Densification
         visibility_filter, radii, viewspace_point_tensor = render_pkg["visibility_filter"], render_pkg["radii"], render_pkg['viewspace_points']
