@@ -78,21 +78,21 @@ def process_first(
 
     files = [
         {
-            'rgb': dair_item.inf_side_img, 'pcd': dair_item.inf_side_pcd,
+            'rgb': dair_item.inf_img_path, 'pcd': dair_item.inf_pcd_path,
             'camera': dair_item.load4pcd_render(type='inf'), 'extra': 'inf'
          },
         {
-            'rgb': dair_item.veh_side_img, 'pcd': dair_item.veh_side_pcd,
+            'rgb': dair_item.veh_img_path, 'pcd': dair_item.veh_pcd_path,
             'camera': dair_item.load4pcd_render(type='veh'), 'extra': 'veh'
         },
         # mapping depth from veh-pcd to infrastructure view
         {
-            'rgb': None, 'pcd': dair_item.inf_side_pcd,
+            'rgb': None, 'pcd': dair_item.inf_pcd_path,
             'camera': dair_item.load4pcd_render(type='veh'), 'extra': 'inf-side-veh'
         },
         # mapping depth from inf-pcd to vehicle view
         {
-            'rgb': None, 'pcd': dair_item.veh_side_pcd,
+            'rgb': None, 'pcd': dair_item.veh_pcd_path,
             'camera': dair_item.load4pcd_render(type='inf'), 'extra': 'veh-side-inf'
         }
     ]
@@ -101,7 +101,7 @@ def process_first(
 
     print(f'files: {files}')
     for file in files:
-        rgb_file = file['rgb']
+        rgb_file = file['rgb'] # pil
         pcd_file_path = file['pcd']
         pcd_file = o3d.io.read_point_cloud(pcd_file_path)
         camera = file['camera']
@@ -208,4 +208,12 @@ def process_first(
 
 
 if __name__ == '__main__':
-    _ = process_first()
+    base_dir = '../dair-test/'
+    dair = DAIR_V2X_C(base_dir)
+    from random import randint
+
+    # prepared_idx = randint(0, 1000) % 600  # random
+    prepared_idx = 0 # TEST
+    pair = CooperativeData(dair[prepared_idx], base_dir)  # dair_item
+
+    processed_dict = process_first(parser=None, dair_item=pair)

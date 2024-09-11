@@ -9,7 +9,7 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 
-import os
+import os, cv2
 import random
 import json
 from PIL import Image
@@ -99,11 +99,16 @@ def CreateCamera(
     #                                            dmindmax=(0.0, 5.0)).squeeze(), depth_colorize_with_mask(
     #     depthmap[None, :, :], dmindmax=(20.0, 130.0)).squeeze()
 
+    print(f'depth_map.shape = {depth_map.shape}')
     if not os.path.exists('./debug'): os.mkdir('./debug')
+    pred_init = depth_map.squeeze().detach().cpu().numpy().astype(np.uint8)
+    M, m = np.max(pred_init), np.min(pred_init)
+    pred_init = (pred_init - m) / (M - m) * 255.
+    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
 
 
-    cv2.imwrite(f"./debug/{uid:03d}_source.png", (source[:, :, ::-1] * 255).astype(np.uint8))
-    cv2.imwrite(f"./debug/{uid:03d}_refined.png", (refined[:, :, ::-1] * 255).astype(np.uint8))
+    cv2.imwrite(f"./debug/{uid:03d}_source.png", (colored_init[:, :, ::-1] * 255).astype(np.uint8))
+    # cv2.imwrite(f"./debug/{uid:03d}_refined.png", (refined[:, :, ::-1] * 255).astype(np.uint8))
     cv2.imwrite(f"./debug/{uid:03d}_target.png", target)
 
 

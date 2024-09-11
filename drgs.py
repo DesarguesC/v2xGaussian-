@@ -345,8 +345,8 @@ def train_DRGS(
         # render_pkg_veh = render(viewpoint_cam, gaussians_veh, pipe, bg)
 
         # weighted
-        image_inf, image_veh = render_pkg_inf["render"], render_pkg_veh["render"]
-        # image = render_pkg_inf["render"] * omit + render_pkg_veh["render"] * (1. - omit)
+        # image_inf, image_veh = render_pkg_inf["render"], render_pkg_veh["render"]
+        image = render_pkg["render"]
 
         # viewspace_point_tensor = torch.zeros_like(
         #     torch.cat([gaussians_inf.get_xyz, gaussians_veh.get_xyz], dim=1), dtype=gaussians_inf.get_xyz.dtype, requires_grad=True, device="cuda"
@@ -354,14 +354,14 @@ def train_DRGS(
 
         # TODO: Bind
         # 如何合并？radii, visibility_filter都是用来控制GS球分裂&合并的，Densification
-        visibility_filter_inf, radii_inf, viewspace_point_tensor_inf = render_pkg_inf["visibility_filter"], render_pkg_inf["radii"], render_pkg_inf['viewspace_points']
-        visibility_filter_veh, radii_veh, viewspace_point_tensor_veh = render_pkg_veh["visibility_filter"], render_pkg_veh["radii"], render_pkg_veh['viewspace_points']
-
+        # visibility_filter_inf, radii_inf, viewspace_point_tensor_inf = render_pkg_inf["visibility_filter"], render_pkg_inf["radii"], render_pkg_inf['viewspace_points']
+        visibility_filter_veh, radii_veh, viewspace_point_tensor_veh = render_pkg["visibility_filter"], render_pkg["radii"], render_pkg['viewspace_points']
 
         # Loss
         # gt_image = viewpoint_cam.original_image.cuda()
         # TODO: rgb的损失要分别传给对应的GS, depth是一起渲染的, 一起传播 | 修改上面这行代码，以及对应到的class下的成员读取
-        gt_image_inf, gt_image_veh = ...?
+        gt_image = viewpoint.
+        # gt_image_inf, gt_image_veh = ...?
         Ll1 = l1_loss(image_inf, gt_image_inf) * omit + l1_loss(image_veh, gt_image_veh) * (1. - omit)
         # loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
         loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * \

@@ -6,6 +6,7 @@ import open3d as o3d
 from matplotlib import pyplot as plt
 from lidar2dep.main import get_CompletionFormer as getFormer
 from lidar2dep.main import create_former_input
+from PIL import Image
 
 
 def load_camera_intrinsic(json_path, return_dict=False):
@@ -95,7 +96,7 @@ def lidar2word(json_path):
 class DAIR_V2X_C:
     def __init__(self, base_dir):
         self.base_dir = base_dir
-        self.config_path = os.path.join(base_dir, 'cooperative/data_info.json')
+        self.config_path = os.path.join(base_dir, 'cooperative-vehicle-infrastructure/cooperative/data_info.json')
         with open(self.config_path) as f:
             self.items = json.load(f)
     def __getitem__(self, idx, require_path=False):
@@ -153,19 +154,23 @@ class CooperativeData:
         # DAIR: ../DAIR-V2X/...
         # PLY: ../ply
 
-        inf_path_list = ['ply', 'inf', str(self.inf_id)]
+        inf_path_list = ['inf', str(self.inf_id), 'ply']
         inf_init = f'{path}/../'
         for pp in inf_path_list:
             inf_init = os.path.join(inf_init, pp)
             if not os.path.exists(inf_init): os.mkdir(inf_init)
         self.inf_ply_store_path = os.path.join(inf_init, f'{self.inf_id}.ply')
 
-        veh_path_list = ['ply', 'veh', str(self.veh_id)]
+        veh_path_list = ['veh', str(self.veh_id), 'ply']
         veh_init = f'{path}/../'
         for pp in veh_path_list:
             veh_init = os.path.join(veh_init, pp)
             if not os.path.exists(veh_init): os.mkdir(veh_init)
-        self.veh_ply_store_path = os.path.join(veh_path_list, f'{self.veh_id}.ply')
+        self.veh_ply_store_path = os.path.join(veh_init, f'{self.veh_id}.ply')
+
+        # self.inf_side_img = Image.open(self.inf_img_path)
+        # self.veh_side_img = Image.open(self.veh_img_path)
+
 
 
     # PREVIOUS API - <Begin>
@@ -225,7 +230,7 @@ class CooperativeData:
 
     # PREVIOUS API - <End>
 
-    def load_pcd(sefl, path):
+    def load_pcd(self, path):
         pcd = o3d.io.read_point_cloud(path)
         arr = np.asarray(pcd.points)
         # print(arr.shape)
@@ -236,17 +241,21 @@ class CooperativeData:
         # get a point: arr[:,idx]
         return pcd, new_arr.T
 
-    def load_intrinsic(self, path):
+    def load_intrinsic(self, path, matrix_read_only = False):
         with open(path) as f:
             ff = json.load(f)
-        height = ff['height']
-        weight = ff['width']
         cam_K = ff['cam_K']
         K = np.array([cam_K[0:3], cam_K[3:6], cam_K[6:9]])
         assert K.shape == (3, 3)
+        if matrix_read_only: return K
+
+        height = ff['height']
+        weight = ff['width']
         return height, weight, K
 
     def intrinsic2dict(self, h, w, K):
+        print(f'h = {h}, w = {w}, K ={K}')
+        assert isinstance(K, np.ndarray), f'type(K): {type(K)}'
         return {
             'height': h,
             'width': w,
@@ -269,7 +278,12 @@ class CooperativeData:
 
     def load4pcd_render(self, type='inf'):
         assert type in ['inf', 'veh'], type
-        h, w, K = self.load_intrinsic(getattr(self, f'{type}_cam_intrinsic_path'))
+        if type == 'inf':
+            h, w, K = self.load_intrinsic(self.inf_cam_intrinsic_path)
+        else:
+            # TODO: 确认一下是不是车端路端的相机内参一致
+            h, w, _ = self.load_intrinsic(self.inf_cam_intrinsic_path)
+            K = self.load_intrinsic(self.veh_cam_intrinsic_path, matrix_read_only=True)
         intrinsic_dict = self.intrinsic2dict(h, w, K)
         extrinsic_array = self.load_extrinsic(getattr(self, f'{type}_lidar2cam_path'))
 
