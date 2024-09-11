@@ -144,7 +144,7 @@ class CooperativeData:
         self.veh_cam_intrinsic_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/camera_intrinsic/{self.veh_id}.json'
         # inf/veh lidar2camera transformation matrix path
         self.inf_lidar2cam_path = f'{path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/virtuallidar_to_camera/{self.inf_id}.json'
-        self.veh_lidar2cam_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/virtuallidar_to_camera/{self.veh_id}.json'
+        self.veh_lidar2cam_path = f'{path}/cooperative-vehicle-infrastructure/vehicle-side/calib/lidar_to_camera/{self.veh_id}.json'
         # inf lidar2world matrix path
         self.inf_lidar2world_path = f'{path}/cooperative-vehicle-infrastructure/infrastructure-side/calib/virtuallidar_to_world/{self.inf_id}.json'
         # veh lidar2world matrix path
@@ -254,7 +254,7 @@ class CooperativeData:
         return height, weight, K
 
     def intrinsic2dict(self, h, w, K):
-        print(f'h = {h}, w = {w}, K ={K}')
+        # print(f'h = {h}, w = {w}, K ={K}')
         assert isinstance(K, np.ndarray), f'type(K): {type(K)}'
         return {
             'height': h,

@@ -28,6 +28,7 @@ def process_first(
     # parser.add_argument('--path', default="./data/test1.jpg", type=str, help="path to image (png, jpeg, etc.)")
     # parser.add_argument('--model', default='u2net', type=str, help="rembg model, see https://github.com/danielgatis/rembg#models")
     parser.add_argument('--size', default=256, type=int, help="output resolution")
+    parser.add_argument('--downsample', default=2, type=int, help="downsample scale")
     parser.add_argument('--border_ratio', default=0.2, type=float, help="output border ratio")
     parser.add_argument('--recenter', type=bool, default=True, help="recenter, potentially not helpful for multiview zero123")
     # SEEM
@@ -128,6 +129,7 @@ def process_first(
         # load image
         print(f'[INFO] loading image {rgb_file}...')
         image = Image.open(rgb_file) # RGB Image
+
         # TODO: use seem to remove foreground
         print(f'[INFO] background removal...')
         res, mask, carved_image = FG_remove_All(
@@ -208,7 +210,7 @@ def process_first(
 
 
 if __name__ == '__main__':
-    base_dir = '../dair-test/'
+    base_dir = '../dair-test'
     dair = DAIR_V2X_C(base_dir)
     from random import randint
 
