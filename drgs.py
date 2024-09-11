@@ -254,6 +254,7 @@ def train_DRGS(
         foc2_a = 0.5 * meta.copy()
         foc2_b = 0.5 * meta.copy()
 
+
     # foc1 = torch.nn.Parameter(foc1.detach().requires_grad_(True))
     # foc2 = torch.nn.Parameter(foc2.detach().requires_grad_(True))
     # inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
@@ -309,6 +310,7 @@ def train_DRGS(
             bg_mask = 1. - fg_mask
         dep = train_now['depth']['panoptic'][-1] # panoptic, uncolored
         viewer_depth = train_now['view']
+
         foc = train_now['foc']
         extra_name = train_now['name']
 
@@ -360,7 +362,7 @@ def train_DRGS(
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
         render_pkg = render(viewpoint, gaussian, pipe, bg)
         image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
-        depth_rendered = foc[0] * depth_rendered + foc[1]viewer_depth
+        depth_rendered = foc[0] * depth_rendered + foc[1] * viewer_depth
         # foc * depth_rendered ? foc * viewer_depth ?
         # TODO: Bind
         # 如何合并？radii, visibility_filter都是用来控制GS球分裂&合并的，Densification
@@ -373,9 +375,10 @@ def train_DRGS(
         # gt_image_inf, gt_image_veh = ...?
         Ll1 = l1_loss(gt_image, image_side_rendered)
 
-        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 \
-                   - ssim(image_side_rendered * fg_mask, gt_image * fg_mask)\
-                   - ssim(image_side_rendered * bg_mask, gt_image * bg_mask))
+        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (
+                   1.0 - ssim(image_side_rendered * fg_mask, gt_image * fg_mask) \
+                   - ssim(image_side_rendered * bg_mask, gt_image * bg_mask)
+            )
 
         depth_rendered = normalize_depth(depth_rendered)
 
