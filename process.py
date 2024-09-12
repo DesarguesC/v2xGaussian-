@@ -34,9 +34,9 @@ def wirte_pred_depth(pred_item: dict = None, idx: int = None):
 
 
     if 'side-depth' in pred_item:
-        pic_path = os.path.join(dd, f'side-pred-{idx}')
+        pic_path = os.path.join(dd, f'side-pred-{idx%2}')
         if not os.path.exists(pic_path): os.mkdir(pic_path)
-        cv2.imwrite(os.path.join(pic_path, f'{idx:03}.jpg'), pred_item['side-depth'])
+        cv2.imwrite(os.path.join(pic_path, 'view.jpg'), pred_item['side-depth'])
     else:
         dd = os.path.join(dd, f'pred_dep_{idx}')
         if not os.path.exists(dd): os.mkdir(dd)

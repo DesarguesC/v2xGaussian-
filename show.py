@@ -2,38 +2,104 @@ import gradio as gr
 from PIL import Image
 import os
 
+# path_list = [
+#     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/mask.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/res.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/removed-bg.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/removed-fg.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd-fg.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_depth-fg.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_init-fg.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd-bg.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_depth-bg.jpg',
+#     '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_init-bg.jpg'
+# ]
+
 path_list = [
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/mask.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/res.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/removed-bg.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/remove/removed-fg.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd-fg.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_depth-fg.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_init-fg.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/V2X-Gaussian/data/depth/projected_pcd-bg.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_depth-bg.jpg',
-    '/NEW_EDS/JJ_Group/ChenD/v2x-outputs/pre-process/colored_pred_init-bg.jpg'
+    './debug/pred_dep_0',
+    './debug/pred_dep_0/depth_image',
+    './debug/pred_dep_1',
+    './debug/pred_dep_1/depth_image',
+    './debug/side-pred-0/view.jpg',
+    './debug/side-pred-1/view.jpg'
 ]
 
-# 定义函数以读取并返回图片
-def load_images():
-    # 读取当前文件夹下的图片
 
-    # img_list = [Image.open(file) for file in path_list]
-    # for file in path_list:
-    # img1 = img1.resize((img1.size[0]//2, img1.size[1]//2), Image.Resampling.BILINEAR)
-    # img2 = img2.resize((img2.size[0]//2, img2.size[1]//2), Image.Resampling.BILINEAR)
-    # img3 = img3.resize((img3.size[0]//2, img3.size[1]//2), Image.Resampling.BILINEAR)
+"""
+debug
+-------pred_dep_0
+    |       |
+    |       |__fg_mask.jpg, rgb.jpg
+    |       |__depth_image
+    |               |
+    |               |__colored_init.jpg, colored_pred_all.jpg, pred.jpg
+    |
+    |__pred_dep_1
+    |       |
+    |       |__ ...
+    |
+    |__side-pred-0
+    |       |__view.jpg
+    |
+    |__side-pred-1
+            |__view.jpg
 
-    return (Image.open(path_list[0]), Image.open(path_list[1]), Image.open(path_list[2]),
-            Image.open(path_list[3]), Image.open(path_list[4]), Image.open(path_list[5]),
-            Image.open(path_list[6]), Image.open(path_list[7]), Image.open(path_list[8]))
+"""
 
-# 创建 Gradio 界面
-with gr.Blocks() as demo:
-    gr.Button("Load Images").click(load_images, outputs=[gr.Image(type='pil') for i in path_list])
+def load_image():
+    mask1 = Image.open(os.path.join(path_list[0], 'fg_mask.jpg'))
+    mask2 = Image.open(os.path.join(path_list[2], 'fg_mask.jpg'))
 
-# 启动 Gradio 界面
-demo.launch(server_name="127.0.0.1", server_port=6006)
-print('launched at \'http://127.0.0.1:6006\'')
+    rgb1 = Image.open(os.path.join(path_list[0], 'rgb.jpg'))
+    rgb2 = Image.open(os.path.join(path_list[2], 'rgb.jpg'))
 
+    dep_1_1, dep_1_2, dep_1_3 = Image.open(os.path.join(path_list[1], 'colored_init.jpg')), \
+        Image.open(os.path.join(path_list[1], 'colored_pred_all.jpg')), \
+        Image.open(os.path.join(path_list[1], 'pred.jpg'))
+
+    dep_2_1, dep_2_2, dep_2_3 = Image.open(os.path.join(path_list[3], 'colored_init.jpg')), \
+        Image.open(os.path.join(path_list[3], 'colored_pred_all.jpg')), \
+        Image.open(os.path.join(path_list[3], 'pred.jpg'))
+
+    side_view_1, side_view_2 = Image.open(path_list[4]), Image.open(path_list[5])
+
+    return (rgb1, mask1, dep_1_1, dep_1_2, dep_1_3, rgb2, mask2, dep_2_1, dep_2_2, dep_2_3, side_view_1, side_view_2)
+
+def main():
+    with gr.Blocks() as demo:
+        button = gr.Button("Load")
+        with gr.Row():
+            rgb1 = gr.Image(label=os.path.join(path_list[0], 'rgb.jpg'))
+            mask1 = gr.Image(label=os.path.join(path_list[0], 'fg_mask.jpg'))
+        with gr.Row():
+            dep_1_1 = gr.Image(label=os.path.join(path_list[1], 'colored_init.jpg'))
+            dep_1_2 = gr.Image(label=os.path.join(path_list[1], 'colored_pred_all.jpg'))
+            dep_1_3 = gr.Image(label=os.path.join(path_list[1], 'pred.jpg'))
+
+        with gr.Row():
+            rgb2 = gr.Image(label=os.path.join(path_list[2], 'rgb.jpg'))
+            mask2 = gr.Image(label=os.path.join(path_list[2], 'fg_mask.jpg'))
+        with gr.Row():
+            dep_2_1 = gr.Image(label=os.path.join(path_list[3], 'colored_init.jpg'))
+            dep_2_2 = gr.Image(label=os.path.join(path_list[3], 'colored_pred_all.jpg'))
+            dep_2_3 = gr.Image(label=os.path.join(path_list[3], 'pred.jpg'))
+
+        with gr.Row():
+            side_view_1 = gr.Image(label=path_list[4])
+            side_view_2 = gr.Image(label=path_list[5])
+
+        button.click(fn=load_image,
+                     inputs=[],
+                     outputs=[
+                         rgb1, mask1, dep_1_1, dep_1_2, dep_1_3,
+                         rgb2, mask2, dep_2_1, dep_2_2, dep_2_3,
+                         side_view_1, side_view_2
+                     ])
+
+    # 启动 Gradio 界面
+    demo.launch(server_name="127.0.0.1", server_port=6006)
+    print('launched at \'http://127.0.0.1:6006\'')
+
+
+if __name__ == '__main__':
+    main()
