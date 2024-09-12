@@ -191,9 +191,9 @@ def Args2Results(
     assert len(rgb.shape) == 4 and len(depth.shape) == 4, f'rgb.shape = {rgb.shape}, dep.shape = {depth.shape}'
     # rgb_size = get_new_size(rgb.shape)
     # dep_size = get_new_size(depth.shape)
-    rgb = Inter(torch.tensor(rgb, dtype=torch.float32), size=rgb_size, mode="bilinear")
-    depth = Inter(torch.tensor(depth, dtype=torch.float32), size=dep_size, mode="bilinear")
-
+    # rgb = Inter(torch.tensor(rgb, dtype=torch.float32), size=rgb_size, mode="bilinear")
+    # depth = Inter(torch.tensor(depth, dtype=torch.float32), size=dep_size, mode="bilinear")
+    print(f'[Debug] rgb.shape = {rgb.shape}, depth.shape = {depth.shape}')
 
     # TODO -> Currently: carved_image & pcd_depth
     # TODO -> Compared with: carved_image & (1-fg_mask)*pcd_depth
@@ -220,7 +220,8 @@ def Args2Results(
     pred_init = out['pred_init'].squeeze()
     pred_init = pred_init.detach().cpu().numpy().astype(np.uint8)
     M, m = np.max(pred_init), np.min(pred_init)
-    pred_init = (pred_init - m) / (M - m) * 255.
+    if M > m:
+        pred_init = (pred_init - m) / (M - m) * 255.
     colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     print(colored_init)
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'colored_pred_init-{extra_name}.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))

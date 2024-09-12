@@ -1,4 +1,4 @@
-import pudb
+import pdb
 
 BASE_DIR = './cooperative-vehicle-infrastructure'
 # TODO: read DAIR-V2X dataset
@@ -180,7 +180,7 @@ class CooperativeData:
             self.veh_side_img = Image.open(self.veh_img_path)
         except Exception as err:
             print(f'err: {err}')
-            pudb.set_trace()
+            pdb.set_trace()
 
         self.inf_side_img = downsampler(self.inf_side_img, self.downsample)
         self.veh_side_img = downsampler(self.veh_side_img, self.downsample)

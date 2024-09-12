@@ -1,5 +1,5 @@
 import numpy as np
-import pudb, cv2
+import pdb, cv2
 from scipy.spatial.transform import Rotation as R
 from PIL import Image, ImageOps
 import torch
@@ -18,7 +18,7 @@ def downsampler(img: any, downsample: int):
             downsample = int(downsample)
         except Exception as err:
             print(f'err: {err}')
-            pudb.set_trace()
+            pdb.set_trace()
 
     if isinstance(img, np.ndarray):
         img = img.squeeze()
@@ -28,8 +28,8 @@ def downsampler(img: any, downsample: int):
             h, w, _ = img.shape
         return cv2.resize(img, ab64((w // downsample, h // downsample)))
 
-    elif isinstance(img, Image):
-        w, h = img.size()
+    elif isinstance(img, Image.Image):
+        w, h = img.size
         w, h = ab64((w // downsample, h // downsample))
         return ImageOps.fit(img, (w,h), method=Image.Resampling.BILINEAR)
 

@@ -105,7 +105,6 @@ def pre_read(
     keep_ratio = (lidar_lines / 64.0)
     assert keep_ratio >=0 and keep_ratio <= 1.0, keep_ratio
 
-
     # TODO: 找到rgb图片视角下的pcd渲染出的sparse depth
     rgb_image = Image.open(rgb_file_path) if isinstance(rgb_file_path, str) else Image.fromarray(rgb_file_path)
     pcd_file = o3d.io.read_point_cloud(pcd_file_path) if isinstance(pcd_file_path, str) else pcd_file_path
@@ -141,7 +140,7 @@ def pre_read(
     cv2.imwrite(os.path.join(depth_path, f'projected_pcd-{extra_name}.jpg'), cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
 
     sampled_depth = sample_lidar_lines(
-        depth_map = depth_image, intrinsics = K_matrix, keep_ratio=keep_ratio
+        depth_map = depth_image[:,:,None], intrinsics = K_matrix, keep_ratio=keep_ratio
     )
 
     if not return_tensor:

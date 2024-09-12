@@ -523,7 +523,7 @@ def main():
     inf_view_veh = processed_dict['inf-side-veh']
     veh_view_inf = processed_dict['veh-sid-inf']
 
-    w, h = inf_side['rgb'].size()
+    w, h = inf_side['rgb'].size
     if not hasattr(parser, 'w'): setattr(parser, 'w', w)
     else: parser.w = w
     if not hasattr(parser, 'h'): setattr(parser, 'h', h)

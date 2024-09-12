@@ -17,6 +17,47 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+
+def wirte_pred_depth(pred_item: dict = None, idx: int = None):
+    """
+    {
+                'rgb': image, # pil
+                'mask': mask, # fg-mask
+                'depth': {
+                'fg': (colored_pred_fg, colored_init_fg, pred_fg),
+                'bg': (colored_pred_bg, colored_init_bg, pred_bg),
+                'panoptic': (colored_pred_all, colored_init, pred) # TODO: adjust it onto PointCloud again ?
+                }, 'pcd': pcd_file
+    }
+    """
+    dd = './debug'
+
+
+    if 'side-pred' in pred_item:
+        pic_path = os.path.join(dd, f'side-pred-{idx}')
+        if not os.path.exists(pic_path): os.mkdir(pic_path)
+        cv2.imwrite(pred_item['side-depth'], os.path.join(pic_path, f'{idx:03}.jpg'))
+    else:
+        dd = os.path.join(dd, f'pred_dep_{idx}')
+        if not os.path.exists(dd): os.mkdir(dd)
+        rgb_path = os.path.join(dd, f'rgb.jpg')
+        mask_path = os.path.join(dd, 'fg_mask.jpg')
+        depth_path = os.path.join(dd, 'depth_image') # only panoptic images
+        if not os.path.exists(depth_path): os.mkdir(depth_path)
+
+        pred_item['rgb'].save(rgb_path)
+        cv2.imwrite(pred_item['mask'], mask_path)
+        named = ['colored_pred_all', 'colored_init', 'pred']
+        for i in range(3):
+            cv2.imwrite(pred_item['depth']['panoptic'][i], os.path.join(depth_path, named[i]))
+
+
+
+
+
+
+
+
 def process_first(
         parser = None, dair_item: CooperativeData = None
         # rgb_file_path: list[str] = None, pcd_file_path: list[str] = None,
@@ -79,6 +120,8 @@ def process_first(
     preloaded_seem_detector = preload_seem_detector(opt)
     preloaded_lama_dict = preload_lama_remover(opt)
 
+    # pdb.set_trace()
+
     files = [
         {
             'rgb': dair_item.inf_img_path, 'pcd': dair_item.inf_pcd_path,
@@ -110,6 +153,8 @@ def process_first(
         camera = file['camera']
         extra_name = file['extra']
 
+        # pdb.set_trace()
+
         if rgb_file is None:
             # 算变换矩阵
             if 'inf' in extra_name: # inf view veh: veh_lidar 2 world 2 inf_lidar 2 inf_cam
@@ -127,11 +172,12 @@ def process_first(
             pred_depth.append(direct_result)
             continue
 
+        # pdb.set_trace()
 
         # load image
         print(f'[INFO] loading image {rgb_file}...')
         image = Image.open(rgb_file) # RGB Image
-        image = downsampler(image, parser.downsample)
+        image = downsampler(image, opt.downsample)
 
         # TODO: use seem to remove foreground
         print(f'[INFO] background removal...')
@@ -153,6 +199,8 @@ def process_first(
         cv2.imwrite(os.path.join(opt.results, f'remove/res-{extra_name}.jpg'), cv2.cvtColor(res, cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, f'remove/removed-{extra_name}-bg.jpg'), cv2.cvtColor(carved_image, cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, f'remove/removed-{extra_name}-fg.jpg'), cv2.cvtColor(carved_image_fg, cv2.COLOR_RGB2BGR))
+
+        pdb.set_trace()
 
         # BackGround
         colored_pred_bg, colored_init_bg, pred_bg = \
@@ -186,6 +234,8 @@ def process_first(
         print(pred_bg, pred_fg)
         # np.array - [H W 3]
 
+        pdb.set_trace()
+
         pred_depth.append({
                 'rgb': image, # pil
                 'mask': mask, # fg-mask
@@ -200,6 +250,10 @@ def process_first(
 
 
     assert len(pred_depth) == 4, f'len(pred_depth) = {len(pred_depth)}'
+
+    for i in range(len(pred_depth)):
+        wirte_pred_depth(pred_depth[i], i)
+
     return {
         'inf-side': pred_depth[0],
         'veh-side': pred_depth[1],
