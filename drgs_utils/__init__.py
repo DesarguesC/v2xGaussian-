@@ -20,11 +20,11 @@ from argparse import ArgumentParser, Namespace
 import sys, os, matplotlib
 import numpy as np
 
-from gaussian_renderer import render, network_gui
-from scene import Scene, GaussianModel
-from utils.loss_utils import l1_loss, l2_loss, nearMean_map, ssim
-from utils.image_utils import normalize_depth, psnr
-from lpipsPyTorch import lpips
+# from gaussian_renderer import render, network_gui
+# from scene import Scene, GaussianModel
+# from utils.loss_utils import l1_loss, l2_loss, nearMean_map, ssim
+# from utils.image_utils import normalize_depth, psnr
+# from lpipsPyTorch import lpips
 
 
 def depth_colorize_with_mask(depthlist, background=(0, 0, 0), dmindmax=None):
