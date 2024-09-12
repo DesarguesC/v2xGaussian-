@@ -33,23 +33,25 @@ def wirte_pred_depth(pred_item: dict = None, idx: int = None):
     dd = './debug'
 
 
-    if 'side-pred' in pred_item:
+    if 'side-depth' in pred_item:
         pic_path = os.path.join(dd, f'side-pred-{idx}')
         if not os.path.exists(pic_path): os.mkdir(pic_path)
-        cv2.imwrite(pred_item['side-depth'], os.path.join(pic_path, f'{idx:03}.jpg'))
+        cv2.imwrite(os.path.join(pic_path, f'{idx:03}.jpg'), pred_item['side-depth'])
     else:
         dd = os.path.join(dd, f'pred_dep_{idx}')
         if not os.path.exists(dd): os.mkdir(dd)
         rgb_path = os.path.join(dd, f'rgb.jpg')
-        mask_path = os.path.join(dd, 'fg_mask.jpg')
+        # mask_path = os.path.join(dd, 'fg_mask')
         depth_path = os.path.join(dd, 'depth_image') # only panoptic images
         if not os.path.exists(depth_path): os.mkdir(depth_path)
 
+        print(pred_item['mask'])
+        print(pred_item['mask'].shape)
         pred_item['rgb'].save(rgb_path)
-        cv2.imwrite(pred_item['mask'], mask_path)
+        cv2.imwrite(f'{dd}/fg_mask.jpg', pred_item['mask'])
         named = ['colored_pred_all', 'colored_init', 'pred']
         for i in range(3):
-            cv2.imwrite(pred_item['depth']['panoptic'][i], os.path.join(depth_path, named[i]))
+            cv2.imwrite(f'{depth_path}/{named[i]}.jpg', pred_item['depth']['panoptic'][i])
 
 
 
@@ -73,6 +75,7 @@ def process_first(
     parser.add_argument('--downsample', default=4, type=int, help="downsample scale")
     parser.add_argument('--border_ratio', default=0.2, type=float, help="output border ratio")
     parser.add_argument('--recenter', type=bool, default=True, help="recenter, potentially not helpful for multiview zero123")
+    parser.add_argument('--debug_mode', type=str2bool, default=False, help="wether to debug")
     # SEEM
     parser.add_argument('--seem_ckpt', type=str, default="../Tools/SEEM/seem_focall_v0.pt", help='restore where the SEEM & LaMa model locates')
     parser.add_argument('--seem_cfg', type=str, default="seem/configs/seem/focall_unicl_lang_demo.yaml")
@@ -146,7 +149,10 @@ def process_first(
     pred_depth = []
 
     print(f'files: {files}')
+    idxxx = 0
     for file in files:
+        print(f'[Debug] <now> idxxx = {idxxx}')
+        idxxx += 1
         rgb_file = file['rgb'] # pil
         pcd_file_path = file['pcd']
         pcd_file = o3d.io.read_point_cloud(pcd_file_path)
@@ -158,16 +164,16 @@ def process_first(
         if rgb_file is None:
             # 算变换矩阵
             if 'inf' in extra_name: # inf view veh: veh_lidar 2 world 2 inf_lidar 2 inf_cam
-                veh_lidar2world = dair_item.veh_side_pcd2world()
+                veh_lidar2world = dair_item.veh_lidar2world()
                 world2inf_cam = dair_item.world2inf_cam()
                 cam_extrinsics = veh_lidar2world @ world2inf_cam
 
             else:
-                inf_lidar2world = dair_item.inf_side_pcd2world()
+                inf_lidar2world = dair_item.inf_lidar2world()
                 world2veh_cam = dair_item.world2veh_cam()
                 cam_extrinsics = inf_lidar2world @ world2veh_cam
 
-            direct_result = Direct_Renderring(pcd_file, opt.depth_path, extra_name, camera, cam_extrinsics)
+            direct_result = Direct_Renderring(pcd_file, opt.depth_path, extra_name, camera['intrinsic'], cam_extrinsics)
             # {"side-depth": depth}
             pred_depth.append(direct_result)
             continue
@@ -200,7 +206,8 @@ def process_first(
         cv2.imwrite(os.path.join(opt.results, f'remove/removed-{extra_name}-bg.jpg'), cv2.cvtColor(carved_image, cv2.COLOR_RGB2BGR))
         cv2.imwrite(os.path.join(opt.results, f'remove/removed-{extra_name}-fg.jpg'), cv2.cvtColor(carved_image_fg, cv2.COLOR_RGB2BGR))
 
-        pdb.set_trace()
+        if opt.debug_mode:
+            pdb.set_trace()
 
         # BackGround
         colored_pred_bg, colored_init_bg, pred_bg = \
@@ -234,7 +241,8 @@ def process_first(
         print(pred_bg, pred_fg)
         # np.array - [H W 3]
 
-        pdb.set_trace()
+        if opt.debug_mode:
+            pdb.set_trace()
 
         pred_depth.append({
                 'rgb': image, # pil

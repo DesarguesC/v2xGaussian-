@@ -335,6 +335,12 @@ class CooperativeData:
         pcd_world = Trans2 @ Trans1 @ veh_pcd_arr
         return pcd_world[0:3, :]
 
+    def inf_lidar2world(self):
+        return self.load_extrinsic(self.inf_lidar2world_path)
+
+    def veh_lidar2world(self):
+        return self.load_extrinsic(self.veh_lidar2novatel_path) @ self.load_extrinsic(self.veh_novatel2world_path)
+
     def world2inf_cam(self):
         return np.linalg.inv(self.load_extrinsic(self.inf_lidar2world_path)) \
                         @ self.load_extrinsic(self.inf_lidar2cam_path)

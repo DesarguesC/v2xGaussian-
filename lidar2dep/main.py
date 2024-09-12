@@ -239,7 +239,8 @@ def Direct_Renderring(pcd_file, depth_path: str, extra_name: str, cam_intrinsics
                     'extrinsic': extrinsic_array, # [4 4] array
         }
     """
-    H, W = cam_intrinsics['intrinsic']['height'], cam_intrinsics['intrinsic']['weight']
+    print(cam_intrinsics['dict'])
+    H, W = cam_intrinsics['dict']['height'], cam_intrinsics['dict']['width']
     cam_K = cam_intrinsics['matrix']
 
     renderer = o3d.visualization.rendering.OffscreenRenderer(width=W, height=H)

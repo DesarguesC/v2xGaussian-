@@ -134,13 +134,15 @@ def pre_read(
     # 把mask部分的pcd点抹去，应该是把mask到的部分变白
     # pcd_img: [H W], fg_mask: [H W 3]
     M, m  = np.max(pcd_img), np.min(pcd_img)
-    depth_image = (pcd_img - m) / (M - m) * 255.
+    depth_image = (pcd_img - m) / (M - m) * 255. if M > m else pcd_img
+    if len(depth_image.shape) < 3: depth_image = depth_image[:,:,None]
 
     colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     cv2.imwrite(os.path.join(depth_path, f'projected_pcd-{extra_name}.jpg'), cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
 
+    print(f'[Debug] before sample: depth_image.shape = {depth_image.shape}')
     sampled_depth = sample_lidar_lines(
-        depth_map = depth_image[:,:,None], intrinsics = K_matrix, keep_ratio=keep_ratio
+        depth_map = depth_image, intrinsics = K_matrix, keep_ratio=keep_ratio
     )
 
     if not return_tensor:
