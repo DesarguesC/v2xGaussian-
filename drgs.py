@@ -1,3 +1,5 @@
+import pdb
+
 from process import process_first
 import os, sys, uuid, cv2, torch, torchvision
 from tqdm import tqdm
@@ -485,7 +487,7 @@ def parser_add(parser=None):
 
 
 def main():
-    base_dir = '../'
+    base_dir = '../dair-test'
     dair = DAIR_V2X_C(base_dir)
     from random import randint
     prepared_idx = randint(0, 1000) % 600  # random
@@ -531,13 +533,14 @@ def main():
     else: parser.h = h
 
     parser = parser_add(parser)
+
+    pdb.set_trace()
+
     train_DRGS(
         args = parser.parse_args(), dair_item = pair,
         inf_side_info = inf_side, veh_side_info = veh_side,
         inf_view_veh = inf_view_veh, veh_view_inf = veh_view_inf
     )
-
-
 
 
 

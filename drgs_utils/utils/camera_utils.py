@@ -13,8 +13,8 @@
 import torch
 from torch import nn
 import numpy as np
-from ..utils.graphics_utils import getWorld2View2, getProjectionMatrix
-from ..utils.loss_utils import image2canny
+from drgs_utils.utils.graphics_utils import getWorld2View2, getProjectionMatrix
+from drgs_utils.utils.loss_utils import image2canny
 
 class Camera(nn.Module):
     def __init__(self, colmap_id, R, T, FoVx, FoVy, image, depth, depth_weight, gt_alpha_mask,
