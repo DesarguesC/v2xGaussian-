@@ -8,20 +8,15 @@
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
-
-import os, cv2
 import random
 import json
-from PIL import Image
 
 import numpy as np
 from .dataset_readers import SceneInfo
-from ..utils.system_utils import searchForMaxIteration
-from ..scene.dataset_readers import sceneLoadTypeCallbacks, sceneConbinationCallbacks, optimize_depth, CameraInfo
-# from ..scene.gaussian_model import GaussianModel
-from .gaussian_model import GaussianModel
-from .. import ModelParams
 from ..utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
+from ..scene.dataset_readers import sceneLoadTypeCallbacks, sceneConbinationCallbacks, optimize_depth, CameraInfo
+from .gaussian_model import GaussianModel
+from .. import *
 from ..scene.dataset_readers import Dair_v2x_Info, BasicPointCloud
 
 from .dataset_readers import Scene

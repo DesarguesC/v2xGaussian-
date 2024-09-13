@@ -12,7 +12,7 @@ sys.path.append(os.path.join(ab_path, 'drgs_utils'))
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
-
+# from utils import *
 from argparse import ArgumentParser, Namespace
 import sys, os, matplotlib
 import numpy as np
