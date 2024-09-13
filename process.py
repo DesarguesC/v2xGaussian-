@@ -61,7 +61,7 @@ def wirte_pred_depth(pred_item: dict = None, idx: int = None):
 
 
 def process_first(
-        parser = None, dair_item: CooperativeData = None
+        parser = None, dair_item: CooperativeData = None, debug_part: bool = False
         # rgb_file_path: list[str] = None, pcd_file_path: list[str] = None,
         # intrinsic_path: list[str] = None, extrinsic_path: list[str] = None
 ):
@@ -88,6 +88,7 @@ def process_first(
     parser.add_argument('--results', type=str, default='../v2x-outputs/pre-process/', help='result direction')
     print(f'parser = {parser}')
     opt = get_args_parser(parser=parser)
+    opt.debug_mode = debug_part
     dair_item.set_downsample(opt.downsample)
 
     # if dair_item is not None:
@@ -108,17 +109,6 @@ def process_first(
         os.mkdir(os.path.join(opt.results, 'remove'))
 
     setattr(opt, "device", "cuda" if torch.cuda.is_available() else "cpu")
-
-    # session = rembg.new_session(model_name=opt.model)
-
-    # if os.path.isdir(opt.rgb_file_path):
-    #     print(f'[INFO] processing directory {opt.rgb_file_path}...')
-    #     files = glob.glob(f'{opt.rgb_file_path}/*')
-    #     # out_dir = opt.rgb_file_path
-    # else: # isfile
-    #     files = [opt.rgb_file_path]
-    #     # out_dir = os.path.dirname(opt.results)
-
 
     preloaded_seem_detector = preload_seem_detector(opt)
     preloaded_lama_dict = preload_lama_remover(opt)

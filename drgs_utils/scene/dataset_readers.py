@@ -754,12 +754,12 @@ def AABB_func(cam_list: list) -> dict:
 
 
 def readDairV2XSyntheticInfo(
-        dair_item: CooperativeData = None,
+        pair: CooperativeData = None,
         inf_side_info: dict = None,
         veh_side_info: dict = None
 ):
     # pre-read DAIR-V2X dataset
-    pair = CooperativeData(dair_item)
+    # dair_item: CooperativeData
     # inf_idx, veh_idx = pair.inf_id, pair.veh_id
 
     inf_cam_K = pair.load_intrinsic(pair.inf_cam_intrinsic_path) # h, w, K[3,3]

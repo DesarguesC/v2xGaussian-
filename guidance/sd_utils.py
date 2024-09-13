@@ -331,7 +331,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("-H", type=int, default=512)
     parser.add_argument("-W", type=int, default=512)
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--steps", type=int, default=50)
     opt = parser.parse_args()
 

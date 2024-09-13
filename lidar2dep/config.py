@@ -47,15 +47,15 @@ def get_args_parser(parser=None):
                         # default=100,
                         help='top crop size for KITTI dataset')
     # Hardware
-    parser.add_argument('--seed',
-                        type=int,
-                        default=43,
-                        help='random seed point')
+    # parser.add_argument('--seed',
+    #                     type=int,
+    #                     default=43,
+    #                     help='random seed point')
     parser.add_argument('--gpus',
                         type=str,
                         default="0,1,2,3",
                         help='visible GPUs')
-    parser.add_argument('--port',
+    parser.add_argument('--master_port',
                         type=str,
                         default='29500',
                         help='master port')

@@ -1,11 +1,8 @@
 import pdb
-
 from process import process_first
 import os, sys, uuid, cv2, torch, torchvision
 from tqdm import tqdm
 from random import randint
-import cv2
-# from drgs_utils import *
 
 from drgs_utils.gaussian_renderer import render, network_gui
 from drgs_utils.scene import GaussianModel
@@ -157,12 +154,7 @@ def Reporter(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iteratio
         torch.cuda.empty_cache()
 
 
-def create_params(parser):
-    no_parser = ArgumentParser(description="Training script parameters")
-    lp = ModelParams(no_parser)
-    op = OptimizationParams(no_parser)
-    pp = PipelineParams(no_parser)
-    return lp.extract(parser), op.extract(parser), pp.extract(parser)
+
 
 
 def train_DRGS(
@@ -195,9 +187,17 @@ def train_DRGS(
 
     """
 
+    if args.debug_mode:
+        pdb.set_trace()
 
+    # TODO: create params
+    lp = ModelParams(args)
+    op = OptimizationParams(args)
+    pp = PipelineParams(args)
+    args = args.parse_args(sys.argv[1:])
+    args.save_iterations.append(args.iterations)
+    dataset, opt, pipe = lp.extract(args), op.extract(args), pp.extract(args)
 
-    dataset, opt, pipe = create_params(args)
     testing_iterations = args.test_iterations
     saving_iterations = args.save_iterations
     checkpoint_iterations = args.checkpoint_iterations
@@ -206,11 +206,17 @@ def train_DRGS(
     usedepth = args.depth
     usedepthReg = args.usedepthReg
 
+    if args.debug_mode:
+        pdb.set_trace()
+
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
     gaussians_inf = GaussianModel(dataset.sh_degree)
     gaussians_veh = GaussianModel(dataset.sh_degree)
     # TODO: implement a new class for multi gaussian splatting
+
+    if args.debug_mode:
+        pdb.set_trace()
 
     # TODO: ↓ load cameras
     dair_info = sceneLoadTypeCallbacks['V2X'](dair_item)  # lidar coordinate -> world coordinate
@@ -224,10 +230,13 @@ def train_DRGS(
     )
 
     # 在世界坐标系下合并点云, 使用inf_view_veh和veh_view_inf
-    Train_Scene = sceneConbinationCallbacks['conbine-pcd'](inf_scene, veh_scene)
+    # Train_Scene = sceneConbinationCallbacks['conbine-pcd'](inf_scene, veh_scene)
     # TODO: train_camera_list & test_camera_list
     # TODO: 这里只能合并点云, 两个scene还是得分开优化, 因为有两个高斯; 前面train_camera和test_camera里有随机索引, 我干脆每次随机挑一个优化
     # -> train_camera/test_camera 另外实现一个类, 调到哪个就优化哪个类
+
+    if args.debug_mode:
+        pdb.set_trace()
 
     # TODO: transport depth&v2x-scene here
     gaussians_inf.training_setup(opt)
@@ -243,12 +252,17 @@ def train_DRGS(
     # 变成一个带权的高斯，用来操控 重叠/空缺 部分的深度信息 -> 一个scalar可控的，用来组合场景的中间件
     # 拓展：能以可微的方式优化路端视角 -> 在真实场景中，路端视角和车端视角之间的具体变换关系可能不知道？
 
+    if args.debug_mode:
+        pdb.set_trace()
 
     meta = torch.zeros((args.h, args.w)).to('cuda')
     h_, w_ = args.h//8, args.w//8
     meta_valid = torch.ones((h_*7, w_*7)).to('cuda')
     meta[h_:args-h_, w_:args-w_] = meta_valid
     meta = torch.nn.Parameter(meta.detach().requires_grad_(True))
+
+    if args.debug_mode:
+        pdb.set_trace()
 
     # Calculate a mask ?
     with torch.no_grad():
@@ -273,6 +287,9 @@ def train_DRGS(
 
     iter_start = torch.cuda.Event(enable_timing=True)
     iter_end = torch.cuda.Event(enable_timing=True)
+
+    if args.debug_mode:
+        pdb.set_trace()
 
     TrainTargets = [
         # 0 -> infrastructure side
@@ -302,6 +319,11 @@ def train_DRGS(
     ema_depthloss_for_log, prev_depthloss, deploss = 0.0, 1e2, torch.zeros(1)
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
+
+    if args.debug_mode:
+        pdb.set_trace()
+
+
     for iteration in range(first_iter, opt.iterations + 1):
         train_now_idx = randint(0,2)
         train_now = TrainTargets[train_now_idx]
@@ -317,7 +339,8 @@ def train_DRGS(
         foc = train_now['foc']
         extra_name = train_now['name']
 
-
+        if args.debug_mode:
+            pdb.set_trace()
 
         # 当前结果实时渲染
         if network_gui.conn == None:
@@ -341,10 +364,11 @@ def train_DRGS(
                 print(f'err: {e}')
                 network_gui.conn = None
 
+        if args.debug_mode:
+            pdb.set_trace()
+
         iter_start.record()
-
         gaussian.update_learning_rate(iteration)
-
         # Every 1000 its we increase the levels of SH up to a maximum degree
         if iteration % 1000 == 0:
             if not (usedepth and iteration >= 2000):
@@ -360,8 +384,10 @@ def train_DRGS(
         if (iteration - 1) == debug_from:
             pipe.debug = True
 
-        bg = torch.rand((3), device="cuda") if opt.random_background else background
+        if args.debug_mode:
+            pdb.set_trace()
 
+        bg = torch.rand((3), device="cuda") if opt.random_background else background
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
         render_pkg = render(viewpoint, gaussian, pipe, bg)
         image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
@@ -385,8 +411,12 @@ def train_DRGS(
 
         depth_rendered = normalize_depth(depth_rendered)
 
+        print(f'[Debug] depth_rendered.shape = {depth_rendered.shape}, fg_mask.shape = {fg_mask.shape}')
         deploss = 0.5 * l1_loss((dep * fg_mask).cuda(), (depth_rendered * fg_mask).cuda()) + 0.5 * l1_loss((dep * bg_mask).cuda(), (depth_rendered * bg_mask).cuda())
         loss = loss + deploss
+
+        if args.debug_mode:
+            pdb.set_trace()
 
         ## depth regularization loss (canny)
         if usedepthReg and iteration >= 0:
@@ -399,6 +429,9 @@ def train_DRGS(
 
         loss.backward()
         iter_end.record()
+
+        if args.debug_mode:
+            pdb.set_trace()
 
         with torch.no_grad():
             # Progress bar
@@ -490,10 +523,11 @@ def main():
     base_dir = '../dair-test'
     dair = DAIR_V2X_C(base_dir)
     from random import randint
-    prepared_idx = randint(0, 1000) % 600  # random
+    # prepared_idx = randint(0, 1000) % 600  # random
+    prepared_idx = 0 # TEST
     pair = CooperativeData(dair[prepared_idx], base_dir) # dair_item
 
-    processed_dict = process_first(parser = None,dair_item = pair)
+    processed_dict = process_first(parser = None, dair_item = pair, debug_part = False)
     """
     {
         'inf-side': pred_depth[0],
@@ -518,13 +552,16 @@ def main():
     -> pred_fg, pred_bg, pred -> uncolored
     
     """
+
     parser = processed_dict['parser']
+    parser.debug_mode = True # manually set [temporary]
+    pair.set_downsample(parser.downsample)
+
     # {'depth': ..., 'pcd': ...}
     inf_side = processed_dict['inf-side']
     veh_side = processed_dict['veh-side']
-
     inf_view_veh = processed_dict['inf-side-veh']
-    veh_view_inf = processed_dict['veh-sid-inf']
+    veh_view_inf = processed_dict['veh-side-inf']
 
     w, h = inf_side['rgb'].size
     if not hasattr(parser, 'w'): setattr(parser, 'w', w)
@@ -534,10 +571,8 @@ def main():
 
     parser = parser_add(parser)
 
-    pdb.set_trace()
-
     train_DRGS(
-        args = parser.parse_args(), dair_item = pair,
+        args = parser, dair_item = pair,
         inf_side_info = inf_side, veh_side_info = veh_side,
         inf_view_veh = inf_view_veh, veh_view_inf = veh_view_inf
     )

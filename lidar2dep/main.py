@@ -81,7 +81,7 @@ def main():
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args_config.gpus
     os.environ["MASTER_ADDR"] = args_config.address
-    os.environ["MASTER_PORT"] = args_config.port
+    os.environ["MASTER_PORT"] = args_config.master_port
     opt = check_args(args_config)
 
     print('\n\n=== Arguments ===')
