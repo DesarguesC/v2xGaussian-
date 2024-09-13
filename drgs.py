@@ -219,7 +219,7 @@ def train_DRGS(
         pdb.set_trace()
 
     # TODO: ↓ load cameras
-    dair_info = sceneLoadTypeCallbacks['V2X'](dair_item)  # lidar coordinate -> world coordinate
+    dair_info = sceneLoadTypeCallbacks['V2X'](dair_item, inf_side_info, veh_side_info)  # lidar coordinate -> world coordinate
     inf_scene = Scene(
         args = dataset, dair_item = dair_item, dair_info = dair_info,
         gaussians = gaussians_inf, side_info = inf_side_info, type = 'inf'
@@ -526,7 +526,6 @@ def main():
     # prepared_idx = randint(0, 1000) % 600  # random
     prepared_idx = 0 # TEST
     pair = CooperativeData(dair[prepared_idx], base_dir) # dair_item
-
     processed_dict = process_first(parser = None, dair_item = pair, debug_part = False)
     """
     {
@@ -552,10 +551,9 @@ def main():
     -> pred_fg, pred_bg, pred -> uncolored
     
     """
-
+    # pair.set_downsample(parser.downsample)
     parser = processed_dict['parser']
     parser.debug_mode = True # manually set [temporary]
-    pair.set_downsample(parser.downsample)
 
     # {'depth': ..., 'pcd': ...}
     inf_side = processed_dict['inf-side']

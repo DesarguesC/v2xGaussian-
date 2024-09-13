@@ -763,7 +763,7 @@ def readDairV2XSyntheticInfo(
     # inf_idx, veh_idx = pair.inf_id, pair.veh_id
 
     inf_cam_K = pair.load_intrinsic(pair.inf_cam_intrinsic_path) # h, w, K[3,3]
-    veh_cam_K = pair.load_intrinsic(pair.veh_cam_intrinsic_path) # h, w, K[3,3]
+    veh_cam_K = pair.load_intrinsic(pair.veh_cam_intrinsic_path, matrix_read_only=True) # h, w, K[3,3]
 
     lidar2cam_inf, lidar2cam_veh = pair.load_extrinsic(pair.inf_lidar2cam_path), pair.load_extrinsic(pair.veh_lidar2cam_path)
     inf2veh = np.linalg.inv(lidar2cam_inf) @ lidar2cam_veh
@@ -775,7 +775,7 @@ def readDairV2XSyntheticInfo(
     world2cam_veh = np.linalg.inv(lidar2world_veh) @ lidar2cam_veh # [4 4]
     inf_pcd, veh_pcd = np.asarray(inf_side_info['pcd'].points), np.asarray(veh_side_info['pcd'].points)
     # -> [3 X] ?
-    inf_pcd, veh_pcd = lidar2world_inf @ inf_pcd, lidar2world_veh @ veh_pcd # transfer to world coordinate
+    # inf_pcd, veh_pcd = lidar2world_inf @ inf_pcd, lidar2world_veh @ veh_pcd # transfer to world coordinate
 
     # .points ✅ .colors ❎ .normals ❎
     print(f'[DEBUG] inf_pcd.shape = {inf_pcd.shape}, veh_pcd.shape = {veh_pcd.shape}')
@@ -784,8 +784,8 @@ def readDairV2XSyntheticInfo(
     inf_rgb = SH2RGB(np.random.random((inf_pcd.shape[1], 3)) / 255.) # -> ([X 3])
     veh_rgb = SH2RGB(np.random.random((veh_pcd.shape[1], 3)) / 255.) # ([X 3])
 
-    inf_pcd_ = BasicPointCloud(points=inf_pcd, colors=inf_rgb, normals=np.zeros((inf_pcd.shape[1],3)))
-    veh_pcd_ = BasicPointCloud(points=veh_pcd, colors=veh_rgb, normals=np.zeros((veh_pcd.shape[1], 3)))
+    # inf_pcd_ = BasicPointCloud(points=inf_pcd, colors=inf_rgb, normals=np.zeros((inf_pcd.shape[1],3)))
+    # veh_pcd_ = BasicPointCloud(points=veh_pcd, colors=veh_rgb, normals=np.zeros((veh_pcd.shape[1], 3)))
     storePly(pair.inf_ply_store_path, inf_pcd, inf_rgb * 255)
     storePly(pair.veh_ply_store_path, veh_pcd, veh_rgb * 255)
 
@@ -793,11 +793,11 @@ def readDairV2XSyntheticInfo(
     normalizedd_veh = AABB_func([world2cam_veh])
 
     return Dair_v2x_Info(
-                inf_pcd = inf_pcd_, veh_pcd = veh_pcd_,
+                inf_pcd = inf_side_info['pcd'], veh_pcd = veh_side_info['pcd'],
                 inf_rgb = np.array(inf_side_info['rgb']), veh_rgb = np.array(veh_side_info['rgb']),
                 inf_depth = inf_side_info['depth'],       veh_depth = veh_side_info['depth'],
                 inf_cam_K = {'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': inf_cam_K[2]},
-                veh_cam_K = {'h': veh_cam_K[0], 'w': veh_cam_K[1], 'cam_K': veh_cam_K[2]},
+                veh_cam_K = {'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': veh_cam_K},
                 inf2veh_matrix = inf2veh,  # [4 4],
                 lidar2cam_inf = lidar2cam_inf, lidar2cam_veh = lidar2cam_veh,
                 world2cam_inf = world2cam_inf, world2cam_veh = world2cam_veh,
