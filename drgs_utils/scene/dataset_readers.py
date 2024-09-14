@@ -202,7 +202,9 @@ def optimize_depth(source, target, mask, depth_weight, prune_ratio=0.001):
     # Prune some depths considered "outlier"     
     with torch.no_grad():
         target_depth_sorted = target[target>1e-7].sort().values
+        # TODO: Bug ↓
         min_prune_threshold = target_depth_sorted[int(target_depth_sorted.numel()*prune_ratio)]
+        # TODO: Bug ↑
         max_prune_threshold = target_depth_sorted[int(target_depth_sorted.numel()*(1.0-prune_ratio))]
 
         mask2 = target > min_prune_threshold
@@ -859,6 +861,8 @@ def CreateCamera(
     source_depth = np.mean(source_depth, axis=-1)
     print(f'[DEBUG] source_depth = {source_depth.shape}, depth_map.shape = {depth_map.shape}, depth_weight.shape = {depth_weight.shape}')
 
+    # BUG - BEGIN
+    # Line <205>
     depth_map, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=(depth_map > 0.), depth_weight=depth_weight)
 
     # import cv2
@@ -870,7 +874,7 @@ def CreateCamera(
 
     pdb.set_trace()
 
-    # BUG - BEGIN
+
 
     print(f'depth_map.shape = {depth_map.shape}')
     if not os.path.exists('./debug'): os.mkdir('./debug')
