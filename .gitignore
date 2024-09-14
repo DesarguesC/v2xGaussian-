@@ -27,6 +27,7 @@ planner-curve.jpg
 # *.jpg
 # *.png
 outputs/
+output/
 Exp*/
 
 # weights
