@@ -194,24 +194,19 @@ def optimize_depth(source, target, mask, depth_weight, prune_ratio=0.001):
     """
     source = torch.from_numpy(source).cuda()
     target = torch.from_numpy(target).cuda()
+    if torch.sum(target).item() == 0.:
+        target[0,0] = 1.
+
     mask = torch.from_numpy(mask).cuda()
     depth_weight = torch.from_numpy(depth_weight).cuda()
-
-    pdb.set_trace()
-
     # Prune some depths considered "outlier"     
     with torch.no_grad():
         target_depth_sorted = target[target>1e-7].sort().values
-        # TODO: Bug ↓
         min_prune_threshold = target_depth_sorted[int(target_depth_sorted.numel()*prune_ratio)]
-        # TODO: Bug ↑
         max_prune_threshold = target_depth_sorted[int(target_depth_sorted.numel()*(1.0-prune_ratio))]
-
         mask2 = target > min_prune_threshold
         mask3 = target < max_prune_threshold
         mask = torch.logical_and( torch.logical_and(mask, mask2), mask3)
-
-    pdb.set_trace()
 
     source_masked = source[mask]
     target_masked = target[mask]
@@ -221,8 +216,6 @@ def optimize_depth(source, target, mask, depth_weight, prune_ratio=0.001):
     # # Normalize
     # target_masked = target_masked - tmin 
     # target_masked = target_masked / (tmax-tmin)
-
-    pdb.set_trace()
 
     scale = torch.ones(1).cuda().requires_grad_(True)
     shift = (torch.ones(1) * 0.5).cuda().requires_grad_(True)
@@ -856,15 +849,9 @@ def CreateCamera(
 
     target = depth_map.copy()
     target = ((target != 0) * 255).astype(np.uint8) # mask
-
-    pdb.set_trace()
     source_depth = np.mean(source_depth, axis=-1)
     print(f'[DEBUG] source_depth = {source_depth.shape}, depth_map.shape = {depth_map.shape}, depth_weight.shape = {depth_weight.shape}')
-
-    # BUG - BEGIN
-    # Line <205>
     depth_map, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=(depth_map > 0.), depth_weight=depth_weight)
-
     # import cv2
     # from render import depth_colorize_with_mask
     #
@@ -872,32 +859,24 @@ def CreateCamera(
     #                                            dmindmax=(0.0, 5.0)).squeeze(), depth_colorize_with_mask(
     #     depthmap[None, :, :], dmindmax=(20.0, 130.0)).squeeze()
 
-    pdb.set_trace()
-
-
-
-    print(f'depth_map.shape = {depth_map.shape}')
+    print(f'depth_map.shape = {depth_map.shape}') # np.ndarray
     if not os.path.exists('./debug'): os.mkdir('./debug')
-    pred_init = depth_map.squeeze().detach().cpu().numpy().astype(np.uint8)
+    pred_init = depth_map.squeeze().astype(np.uint8)
+    print(f'pred_init.shape = {pred_init.shape}')
     M, m = np.max(pred_init), np.min(pred_init)
-    pred_init = (pred_init - m) / (M - m) * 255.
+    if M > m:
+        pred_init = (pred_init - m) / (M - m) * 255.
+
     colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
-
-    # BUG - END
-
-    pdb.set_trace()
-
-    source_path = '/debug/sources'
+    source_path = './debug/sources'
     if not os.path.exists(source_path): os.mkdir(source_path)
 
     print(f'[Debug] (colored_init[:, :, ::-1] * 255).astype(np.uint8).shape = {(colored_init[:, :, ::-1] * 255).astype(np.uint8).shape}')
     print(f'[Debug] target.shape = {target.shape}')
 
-    cv2.imwrite(os.path.join(source_path, f"{uid:03d}_source.png"), (colored_init[:, :, ::-1] * 255).astype(np.uint8))
+    cv2.imwrite(os.path.join(source_path, f"{uid}_source.png"), (colored_init[:, :, ::-1] * 255).astype(np.uint8))
     # cv2.imwrite(f"./debug/{uid:03d}_refined.png", (refined[:, :, ::-1] * 255).astype(np.uint8))
-    cv2.imwrite(os.path.join(source_path, f"{uid:03d}_target.png"), target)
-
-    pdb.set_trace()
+    cv2.imwrite(os.path.join(source_path, f"{uid}_target.png"), target)
 
     return CameraInfo(uid=str(0 if type=='inf' else 1) + uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img, depth=depth_map,
                depth_weight=depth_weight, image_path=getattr(dair_item, f'{type}_img_path'),

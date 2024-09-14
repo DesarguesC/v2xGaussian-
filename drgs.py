@@ -196,7 +196,13 @@ def train_DRGS(
     pp = PipelineParams(args)
     args = args.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
+    w, h = inf_side_info['rgb'].size
+    if not hasattr(args, 'w'): setattr(args, 'w', w)
+    else: args.w = w
+    if not hasattr(args, 'h'): setattr(args, 'h', h)
+    else: args.h = h
     dataset, opt, pipe = lp.extract(args), op.extract(args), pp.extract(args)
+
 
     testing_iterations = args.test_iterations
     saving_iterations = args.save_iterations
@@ -235,8 +241,7 @@ def train_DRGS(
     # TODO: 这里只能合并点云, 两个scene还是得分开优化, 因为有两个高斯; 前面train_camera和test_camera里有随机索引, 我干脆每次随机挑一个优化
     # -> train_camera/test_camera 另外实现一个类, 调到哪个就优化哪个类
 
-    if args.debug_mode:
-        pdb.set_trace()
+    pdb.set_trace()
 
     # TODO: transport depth&v2x-scene here
     gaussians_inf.training_setup(opt)
@@ -252,17 +257,17 @@ def train_DRGS(
     # 变成一个带权的高斯，用来操控 重叠/空缺 部分的深度信息 -> 一个scalar可控的，用来组合场景的中间件
     # 拓展：能以可微的方式优化路端视角 -> 在真实场景中，路端视角和车端视角之间的具体变换关系可能不知道？
 
-    if args.debug_mode:
-        pdb.set_trace()
+    pdb.set_trace()
+
 
     meta = torch.zeros((args.h, args.w)).to('cuda')
+    assert args.h%8==0 and args.w%8==0, f'(args.w, args.h) = {(args.w, args.h)}'
     h_, w_ = args.h//8, args.w//8
-    meta_valid = torch.ones((h_*7, w_*7)).to('cuda')
-    meta[h_:args-h_, w_:args-w_] = meta_valid
+    meta_valid = torch.ones((h_*6, w_*6)).to('cuda')
+    meta[h_:args.h-h_, w_:args.w-w_] = meta_valid
     meta = torch.nn.Parameter(meta.detach().requires_grad_(True))
 
-    if args.debug_mode:
-        pdb.set_trace()
+    pdb.set_trace()
 
     # Calculate a mask ?
     with torch.no_grad():
@@ -288,8 +293,7 @@ def train_DRGS(
     iter_start = torch.cuda.Event(enable_timing=True)
     iter_end = torch.cuda.Event(enable_timing=True)
 
-    if args.debug_mode:
-        pdb.set_trace()
+    pdb.set_trace()
 
     TrainTargets = [
         # 0 -> infrastructure side
@@ -561,13 +565,8 @@ def main():
     inf_view_veh = processed_dict['inf-side-veh']
     veh_view_inf = processed_dict['veh-side-inf']
 
-    w, h = inf_side['rgb'].size
-    if not hasattr(parser, 'w'): setattr(parser, 'w', w)
-    else: parser.w = w
-    if not hasattr(parser, 'h'): setattr(parser, 'h', h)
-    else: parser.h = h
-
     parser = parser_add(parser)
+    # print(f'parser.w = {parser.w}, parser.h = {parser.h}')
 
     train_DRGS(
         args = parser, dair_item = pair,
