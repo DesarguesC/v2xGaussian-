@@ -9,7 +9,7 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 
-import os, cv2, sys, torch
+import os, cv2, sys, torch, pdb
 # ab_path = os.path.dirname(os.path.abspath(sys.argv[0]))
 # sys.path.append(os.path.join(ab_path, 'utils'))
 from pytorch3d.transforms.so3 import (
@@ -197,6 +197,8 @@ def optimize_depth(source, target, mask, depth_weight, prune_ratio=0.001):
     mask = torch.from_numpy(mask).cuda()
     depth_weight = torch.from_numpy(depth_weight).cuda()
 
+    pdb.set_trace()
+
     # Prune some depths considered "outlier"     
     with torch.no_grad():
         target_depth_sorted = target[target>1e-7].sort().values
@@ -207,6 +209,8 @@ def optimize_depth(source, target, mask, depth_weight, prune_ratio=0.001):
         mask3 = target < max_prune_threshold
         mask = torch.logical_and( torch.logical_and(mask, mask2), mask3)
 
+    pdb.set_trace()
+
     source_masked = source[mask]
     target_masked = target[mask]
     depth_weight_masked = depth_weight[mask]
@@ -215,6 +219,8 @@ def optimize_depth(source, target, mask, depth_weight, prune_ratio=0.001):
     # # Normalize
     # target_masked = target_masked - tmin 
     # target_masked = target_masked / (tmax-tmin)
+
+    pdb.set_trace()
 
     scale = torch.ones(1).cuda().requires_grad_(True)
     shift = (torch.ones(1) * 0.5).cuda().requires_grad_(True)
@@ -270,6 +276,7 @@ def fetchPly(path):
     return BasicPointCloud(points=positions, colors=colors, normals=normals, errors=errors)
 
 def storePly(path, xyz, rgb, xyzerr=None):
+    print(f'[Debug] | path = {path}, xyz.shape = {xyz.shape}, rgb.shape = {rgb.shape}')
     # Define the dtype for the structured array
     dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
             ('nx', 'f4'), ('ny', 'f4'), ('nz', 'f4'),
@@ -774,15 +781,15 @@ def readDairV2XSyntheticInfo(
     world2cam_inf = np.linalg.inv(lidar2world_inf) @ lidar2cam_inf # [4 4]
     world2cam_veh = np.linalg.inv(lidar2world_veh) @ lidar2cam_veh # [4 4]
     inf_pcd, veh_pcd = np.asarray(inf_side_info['pcd'].points), np.asarray(veh_side_info['pcd'].points)
-    # -> [3 X] ?
+    # -> [X 3]
     # inf_pcd, veh_pcd = lidar2world_inf @ inf_pcd, lidar2world_veh @ veh_pcd # transfer to world coordinate
-
+    print(f'[DEBUG] <in readDairV2XSyntheticInfo>: type(inf_pcd) = {type(inf_pcd)}, type(veh_pcd) = {type(veh_pcd)}')
     # .points ✅ .colors ❎ .normals ❎
     print(f'[DEBUG] inf_pcd.shape = {inf_pcd.shape}, veh_pcd.shape = {veh_pcd.shape}')
 
     # We create random points inside the bounds of the synthetic Blender scenes
-    inf_rgb = SH2RGB(np.random.random((inf_pcd.shape[1], 3)) / 255.) # -> ([X 3])
-    veh_rgb = SH2RGB(np.random.random((veh_pcd.shape[1], 3)) / 255.) # ([X 3])
+    inf_rgb = SH2RGB(np.random.random((inf_pcd.shape[0], 3)) / 255.) # -> ([X 3])
+    veh_rgb = SH2RGB(np.random.random((veh_pcd.shape[0], 3)) / 255.) # ([X 3])
 
     # inf_pcd_ = BasicPointCloud(points=inf_pcd, colors=inf_rgb, normals=np.zeros((inf_pcd.shape[1],3)))
     # veh_pcd_ = BasicPointCloud(points=veh_pcd, colors=veh_rgb, normals=np.zeros((veh_pcd.shape[1], 3)))
@@ -790,18 +797,18 @@ def readDairV2XSyntheticInfo(
     storePly(pair.veh_ply_store_path, veh_pcd, veh_rgb * 255)
 
     normalized_inf = AABB_func([world2cam_inf])
-    normalizedd_veh = AABB_func([world2cam_veh])
+    normalized_veh = AABB_func([world2cam_veh])
 
     return Dair_v2x_Info(
                 inf_pcd = inf_side_info['pcd'], veh_pcd = veh_side_info['pcd'],
                 inf_rgb = np.array(inf_side_info['rgb']), veh_rgb = np.array(veh_side_info['rgb']),
                 inf_depth = inf_side_info['depth'],       veh_depth = veh_side_info['depth'],
-                inf_cam_K = {'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': inf_cam_K[2]},
-                veh_cam_K = {'h': inf_cam_K[0], 'w': inf_cam_K[1], 'cam_K': veh_cam_K},
+                inf_cam_K = {'height': inf_cam_K[0], 'width': inf_cam_K[1], 'cam_K': inf_cam_K[2]},
+                veh_cam_K = {'height': inf_cam_K[0], 'width': inf_cam_K[1], 'cam_K': veh_cam_K},
                 inf2veh_matrix = inf2veh,  # [4 4],
                 lidar2cam_inf = lidar2cam_inf, lidar2cam_veh = lidar2cam_veh,
                 world2cam_inf = world2cam_inf, world2cam_veh = world2cam_veh,
-                normalization_inf = normalized_inf, normalization_veh = normalizedd_veh
+                normalization_inf = normalized_inf, normalization_veh = normalized_veh
             )
 
 
@@ -816,9 +823,10 @@ sceneLoadTypeCallbacks = {
 
 def CreateCamera(
         dair_item: CooperativeData, dair_info: Dair_v2x_Info,
-        side_info: dict, pcd_file: BasicPointCloud,
+        side_info: dict,
         type: str = 'inf', white_background: bool = False
     ):
+    pcd_file = side_info['pcd']
     uid = str(getattr(dair_item, f'{type}_id'))
     bg = np.array([1, 1, 1, 0]) if white_background else np.array([0, 0, 0, 0])
 
@@ -829,9 +837,8 @@ def CreateCamera(
 
     R, T = cam_extrinsic[0:3,0:3], cam_extrinsic[0:3, 3]
     FovX, FovY = cam_K[0,0], cam_K[1,1]
-
-    depth_map, depth_weight = np.zeros(height, width), np.zeros(height, width)
-    cam_coord = np.matmul(cam_K, np.matmul(R.transpose(), pcd_file.points.transpose()) + T.reshape(3, 1))
+    depth_map, depth_weight = np.zeros((height, width)), np.zeros((height, width))
+    cam_coord = np.matmul(cam_K, np.matmul(R.transpose(), np.asarray(pcd_file.points).transpose()) + T.reshape(3, 1))
     ### for coordinate definition, see getWorld2View2() function
     valid_idx = np.where(np.logical_and.reduce((cam_coord[2] > 0, cam_coord[0] / cam_coord[2] >= 0,
                                                 cam_coord[0] / cam_coord[2] <= width - 1,
@@ -843,12 +850,16 @@ def CreateCamera(
     depth_weight[np.round(cam_coord[1]).astype(np.int32).clip(0, height - 1), np.round(cam_coord[0]).astype(np.int32).clip(0, width - 1)] = 1
     depth_weight = depth_weight / depth_weight.max()
 
-    rgb_img, source_depth = side_info['rgb'], side_info['depth']['panoptic']
+    rgb_img, source_depth = side_info['rgb'], side_info['depth']['panoptic'][0] # 0, 1, 2 ?
 
     target = depth_map.copy()
     target = ((target != 0) * 255).astype(np.uint8) # mask
-    depth_map, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=depth_map > 0.0,
-                                         depth_weight=depth_weight)
+
+    pdb.set_trace()
+    source_depth = np.mean(source_depth, axis=-1)
+    print(f'[DEBUG] source_depth = {source_depth.shape}, depth_map.shape = {depth_map.shape}, depth_weight.shape = {depth_weight.shape}')
+
+    depth_map, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=(depth_map > 0.), depth_weight=depth_weight)
 
     # import cv2
     # from render import depth_colorize_with_mask
@@ -857,6 +868,10 @@ def CreateCamera(
     #                                            dmindmax=(0.0, 5.0)).squeeze(), depth_colorize_with_mask(
     #     depthmap[None, :, :], dmindmax=(20.0, 130.0)).squeeze()
 
+    pdb.set_trace()
+
+    # BUG - BEGIN
+
     print(f'depth_map.shape = {depth_map.shape}')
     if not os.path.exists('./debug'): os.mkdir('./debug')
     pred_init = depth_map.squeeze().detach().cpu().numpy().astype(np.uint8)
@@ -864,13 +879,23 @@ def CreateCamera(
     pred_init = (pred_init - m) / (M - m) * 255.
     colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
 
+    # BUG - END
 
-    cv2.imwrite(f"./debug/{uid:03d}_source.png", (colored_init[:, :, ::-1] * 255).astype(np.uint8))
+    pdb.set_trace()
+
+    source_path = '/debug/sources'
+    if not os.path.exists(source_path): os.mkdir(source_path)
+
+    print(f'[Debug] (colored_init[:, :, ::-1] * 255).astype(np.uint8).shape = {(colored_init[:, :, ::-1] * 255).astype(np.uint8).shape}')
+    print(f'[Debug] target.shape = {target.shape}')
+
+    cv2.imwrite(os.path.join(source_path, f"{uid:03d}_source.png"), (colored_init[:, :, ::-1] * 255).astype(np.uint8))
     # cv2.imwrite(f"./debug/{uid:03d}_refined.png", (refined[:, :, ::-1] * 255).astype(np.uint8))
-    cv2.imwrite(f"./debug/{uid:03d}_target.png", target)
+    cv2.imwrite(os.path.join(source_path, f"{uid:03d}_target.png"), target)
 
+    pdb.set_trace()
 
-    return CameraInfo(uid=str(0 if type=='inf' else 1)+uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img, depth=depth_map,
+    return CameraInfo(uid=str(0 if type=='inf' else 1) + uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img, depth=depth_map,
                depth_weight=depth_weight, image_path=getattr(dair_item, f'{type}_img_path'),
                image_name=uid, width=width, height=height, depthloss=depthloss)
 
@@ -918,7 +943,7 @@ class Scene:
         self.gaussians.create_from_pcd(getattr(dair_info, f'{type}_pcd'), self.cameras_extent)
 
         # cameraList_from_camInfos
-        cam_infos = [CreateCamera(dair_info, type_) for type_ in [type, anti_type]]
+        cam_infos = [CreateCamera(dair_item, dair_info, side_info, type_) for type_ in [type, anti_type]]
         train_cam_infos = [cam_infos[0]] if eval else cam_infos # 当前type必然参与训练
         test_cam_infos = [cam_infos[1]] if eval else []
 

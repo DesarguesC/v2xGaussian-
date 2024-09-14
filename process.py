@@ -8,6 +8,7 @@ from lidar2dep.main import Args2Results, Direct_Renderring
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
 from seem.masks import FG_remove, FG_remove_All, preload_seem_detector, preload_lama_remover
 from lidar2dep.dair import DAIR_V2X_C, CooperativeData
+from lidar2dep.main import get_CompletionFormer
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -61,7 +62,7 @@ def wirte_pred_depth(pred_item: dict = None, idx: int = None):
 
 
 def process_first(
-        parser = None, dair_item: CooperativeData = None, debug_part: bool = False
+        parser = None, dair_item: CooperativeData = None, debug_part: bool = False, read_only: bool = False
         # rgb_file_path: list[str] = None, pcd_file_path: list[str] = None,
         # intrinsic_path: list[str] = None, extrinsic_path: list[str] = None
 ):
@@ -109,9 +110,13 @@ def process_first(
         os.mkdir(os.path.join(opt.results, 'remove'))
 
     setattr(opt, "device", "cuda" if torch.cuda.is_available() else "cpu")
-
-    preloaded_seem_detector = preload_seem_detector(opt)
-    preloaded_lama_dict = preload_lama_remover(opt)
+    if not read_only:
+        print('[INFO] Loading SEEM...')
+        preloaded_seem_detector = preload_seem_detector(opt)
+        print('[INFO] Loading LaMA...')
+        preloaded_lama_dict = preload_lama_remover(opt)
+        print('[INFO] Loading CompletionFormer...')
+        CompletionModel = get_CompletionFormer(opt)
 
     # pdb.set_trace()
 
@@ -149,6 +154,7 @@ def process_first(
         camera = file['camera']
         extra_name = file['extra']
 
+
         # pdb.set_trace()
 
         if rgb_file is None:
@@ -169,6 +175,26 @@ def process_first(
             continue
 
         # pdb.set_trace()
+        if read_only:
+            image = Image.open(rgb_file)  # RGB Image
+            image = downsampler(image, opt.downsample)
+            mask = cv2.imread(os.path.join(opt.results, f'remove/mask-{extra_name}.jpg'))
+
+            colored_pred_fg, colored_init_fg, pred_fg = cv2.imread(os.path.join(opt.results, f'pred_depth-{extra_name}-fg.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_depth-{extra_name}-fg.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_init-{extra_name}-fg.jpg'))
+            colored_pred_bg, colored_init_bg, pred_bg = cv2.imread(os.path.join(opt.results, f'pred_depth-{extra_name}-bg.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_depth-{extra_name}-bg.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_init-{extra_name}-bg.jpg'))
+            colored_pred_all, colored_init, pred = cv2.imread(os.path.join(opt.results, f'pred_depth-{extra_name}-panoptic.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_depth-{extra_name}-panoptic.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_init-{extra_name}-panoptic.jpg'))
+
+            pred_depth.append({
+                'rgb': image,  # pil
+                'mask': mask,  # fg-mask
+                'depth': {
+                    'fg': (colored_pred_fg, colored_init_fg, pred_fg),
+                    'bg': (colored_pred_bg, colored_init_bg, pred_bg),
+                    'panoptic': (colored_pred_all, colored_init, pred)  # TODO: adjust it onto PointCloud again ?
+                }, 'pcd': pcd_file
+            })
+            continue
+
 
         # load image
         print(f'[INFO] loading image {rgb_file}...')
@@ -204,6 +230,7 @@ def process_first(
             Args2Results(
                 opt, rgb_file=carved_image, pcd_file_path=pcd_file,
                 intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
+                CompletionModel = CompletionModel,
                 fg_mask=mask, new_path=False, extra_name=f'{extra_name}-bg'
             )
         # ForeGround
@@ -214,6 +241,7 @@ def process_first(
             Args2Results(
                 opt, rgb_file=carved_image_fg, pcd_file_path=pcd_file,
                 intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
+                CompletionModel=CompletionModel,
                 fg_mask=1.-mask, new_path=False, extra_name=f'{extra_name}-fg'
             )
         #   前景使用lama填充背景
@@ -223,6 +251,7 @@ def process_first(
             Args2Results(
                 opt, rgb_file=np.array(image), pcd_file_path=pcd_file,
                 intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
+                CompletionModel=CompletionModel,
                 fg_mask=None, new_path=False, extra_name=f'{extra_name}-panoptic'
             )
         # 不分前背景

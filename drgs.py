@@ -526,7 +526,7 @@ def main():
     # prepared_idx = randint(0, 1000) % 600  # random
     prepared_idx = 0 # TEST
     pair = CooperativeData(dair[prepared_idx], base_dir) # dair_item
-    processed_dict = process_first(parser = None, dair_item = pair, debug_part = False)
+    processed_dict = process_first(parser = None, dair_item = pair, debug_part = False, read_only=True)
     """
     {
         'inf-side': pred_depth[0],

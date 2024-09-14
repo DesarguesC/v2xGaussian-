@@ -165,7 +165,7 @@ def main():
 
 def Args2Results(
         opt, rgb_file = None, pcd_file_path = None,
-        intrinsics = None, extrinsics = None,
+        intrinsics = None, extrinsics = None, CompletionModel = None,
         fg_mask=None, new_path=True, extra_name='fg'
     ):
 
@@ -180,7 +180,7 @@ def Args2Results(
             )
 
     assert os.path.exists(opt.depth_path), opt.depth_path
-    net = get_CompletionFormer(opt)
+    net = CompletionModel # get_CompletionFormer(opt)
     rgb, depth, K = I_dict['rgb'], I_dict['dep'], I_dict['K']
     # K: intrinsic matrix -> torch.Tensor[3 3]
     if len(rgb.shape) <= 3:
@@ -212,9 +212,11 @@ def Args2Results(
     M, m = np.max(pred), np.min(pred)
     pred = (pred - m) / (M - m) * 255.
     colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_RAINBOW)
-    print(pred)
+
+    pred = repeat(pred[:,:,None].astype(np.uint8), 'h w 1 -> h w c', c=3)
+    print(f'pred.shape = {pred.shape}')
     # depth writing paths
-    cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'pred_depth-{extra_name}.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'pred_depth-{extra_name}.jpg'), cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'colored_pred_depth-{extra_name}.jpg'), cv2.cvtColor(colored_pred, cv2.COLOR_RGB2BGR))
 
     pred_init = out['pred_init'].squeeze()
