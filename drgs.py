@@ -265,22 +265,21 @@ def train_DRGS(
     h_, w_ = args.h//8, args.w//8
     meta_valid = torch.ones((h_*6, w_*6)).to('cuda')
     meta[h_:args.h-h_, w_:args.w-w_] = meta_valid
-    meta = torch.nn.Parameter(meta.detach().requires_grad_(True))
+
+    # ↑ done
+    # meta = torch.nn.Parameter(meta.detach().requires_grad_(True))
 
     pdb.set_trace()
 
     # Calculate a mask ?
     with torch.no_grad():
-        foc1_a = 0.5 * meta.copy()
-        foc1_b = 0.5 * meta.copy()
-        foc2_a = 0.5 * meta.copy()
-        foc2_b = 0.5 * meta.copy()
+        foc1_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
+        foc1_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
+        foc2_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
+        foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
 
 
-    # foc1 = torch.nn.Parameter(foc1.detach().requires_grad_(True))
-    # foc2 = torch.nn.Parameter(foc2.detach().requires_grad_(True))
-    # inf_fg_mask, veh_fg_mask = inf_side_info['mask'], veh_side_info['mask']
-    torch.empty_cache()
+    torch.empty_cache()  # Version: ?
 
     # TODO-1: find where to read camera intrinsics/extrinsics, amend them respectively.
     # TODO-2: original dataset pre stored multi-views, while we only sample two views.
