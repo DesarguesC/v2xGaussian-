@@ -187,9 +187,6 @@ def train_DRGS(
 
     """
 
-    if args.debug_mode:
-        pdb.set_trace()
-
     # TODO: create params
     lp = ModelParams(args)
     op = OptimizationParams(args)
@@ -212,20 +209,15 @@ def train_DRGS(
     usedepth = args.depth
     usedepthReg = args.usedepthReg
 
-    if args.debug_mode:
-        pdb.set_trace()
-
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
     gaussians_inf = GaussianModel(dataset.sh_degree)
     gaussians_veh = GaussianModel(dataset.sh_degree)
     # TODO: implement a new class for multi gaussian splatting
 
-    if args.debug_mode:
-        pdb.set_trace()
-
     # TODO: ↓ load cameras
     dair_info = sceneLoadTypeCallbacks['V2X'](dair_item, inf_side_info, veh_side_info)  # lidar coordinate -> world coordinate
+
     inf_scene = Scene(
         args = dataset, dair_item = dair_item, dair_info = dair_info,
         gaussians = gaussians_inf, side_info = inf_side_info, type = 'inf'
@@ -235,13 +227,12 @@ def train_DRGS(
         gaussians=gaussians_veh, side_info=veh_side_info, type='veh'
     )
 
+
     # 在世界坐标系下合并点云, 使用inf_view_veh和veh_view_inf
     # Train_Scene = sceneConbinationCallbacks['conbine-pcd'](inf_scene, veh_scene)
     # TODO: train_camera_list & test_camera_list
     # TODO: 这里只能合并点云, 两个scene还是得分开优化, 因为有两个高斯; 前面train_camera和test_camera里有随机索引, 我干脆每次随机挑一个优化
     # -> train_camera/test_camera 另外实现一个类, 调到哪个就优化哪个类
-
-    pdb.set_trace()
 
     # TODO: transport depth&v2x-scene here
     gaussians_inf.training_setup(opt)
@@ -257,19 +248,12 @@ def train_DRGS(
     # 变成一个带权的高斯，用来操控 重叠/空缺 部分的深度信息 -> 一个scalar可控的，用来组合场景的中间件
     # 拓展：能以可微的方式优化路端视角 -> 在真实场景中，路端视角和车端视角之间的具体变换关系可能不知道？
 
-    pdb.set_trace()
-
 
     meta = torch.zeros((args.h, args.w)).to('cuda')
     assert args.h%8==0 and args.w%8==0, f'(args.w, args.h) = {(args.w, args.h)}'
     h_, w_ = args.h//8, args.w//8
     meta_valid = torch.ones((h_*6, w_*6)).to('cuda')
     meta[h_:args.h-h_, w_:args.w-w_] = meta_valid
-
-    # ↑ done
-    # meta = torch.nn.Parameter(meta.detach().requires_grad_(True))
-
-    pdb.set_trace()
 
     # Calculate a mask ?
     with torch.no_grad():
@@ -279,7 +263,7 @@ def train_DRGS(
         foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
 
 
-    torch.empty_cache()  # Version: ?
+    # torch.empty_cache()  # TODO: checkout version
 
     # TODO-1: find where to read camera intrinsics/extrinsics, amend them respectively.
     # TODO-2: original dataset pre stored multi-views, while we only sample two views.
@@ -291,8 +275,6 @@ def train_DRGS(
 
     iter_start = torch.cuda.Event(enable_timing=True)
     iter_end = torch.cuda.Event(enable_timing=True)
-
-    pdb.set_trace()
 
     TrainTargets = [
         # 0 -> infrastructure side
@@ -323,12 +305,9 @@ def train_DRGS(
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
 
-    if args.debug_mode:
-        pdb.set_trace()
-
-
     for iteration in range(first_iter, opt.iterations + 1):
-        train_now_idx = randint(0,2)
+
+        train_now_idx = randint(0,1) # [0,1]
         train_now = TrainTargets[train_now_idx]
 
         gaussian = train_now['gaussian']
@@ -342,12 +321,11 @@ def train_DRGS(
         foc = train_now['foc']
         extra_name = train_now['name']
 
-        if args.debug_mode:
-            pdb.set_trace()
 
         # 当前结果实时渲染
         if network_gui.conn == None:
             network_gui.try_connect()
+
         while network_gui.conn != None:
             try:
                 net_image_bytes = None
@@ -367,8 +345,7 @@ def train_DRGS(
                 print(f'err: {e}')
                 network_gui.conn = None
 
-        if args.debug_mode:
-            pdb.set_trace()
+
 
         iter_start.record()
         gaussian.update_learning_rate(iteration)
@@ -387,13 +364,14 @@ def train_DRGS(
         if (iteration - 1) == debug_from:
             pipe.debug = True
 
-        if args.debug_mode:
-            pdb.set_trace()
-
         bg = torch.rand((3), device="cuda") if opt.random_background else background
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
+
+        pdb.set_trace()
         render_pkg = render(viewpoint, gaussian, pipe, bg)
+        # RuntimeError: CUDA error: an illegal memory access was encountered
         image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
+        #  RuntimeError: CUDA error: an illegal memory access was encountered
         depth_rendered = foc[0] * depth_rendered + foc[1] * viewer_depth
         # foc * depth_rendered ? foc * viewer_depth ?
         # TODO: Bind
@@ -418,8 +396,6 @@ def train_DRGS(
         deploss = 0.5 * l1_loss((dep * fg_mask).cuda(), (depth_rendered * fg_mask).cuda()) + 0.5 * l1_loss((dep * bg_mask).cuda(), (depth_rendered * bg_mask).cuda())
         loss = loss + deploss
 
-        if args.debug_mode:
-            pdb.set_trace()
 
         ## depth regularization loss (canny)
         if usedepthReg and iteration >= 0:
@@ -433,8 +409,6 @@ def train_DRGS(
         loss.backward()
         iter_end.record()
 
-        if args.debug_mode:
-            pdb.set_trace()
 
         with torch.no_grad():
             # Progress bar
@@ -530,6 +504,7 @@ def main():
     prepared_idx = 0 # TEST
     pair = CooperativeData(dair[prepared_idx], base_dir) # dair_item
     processed_dict = process_first(parser = None, dair_item = pair, debug_part = False, read_only=True)
+    print('-'*20 + 'Finish Reading' + '-'*20)
     """
     {
         'inf-side': pred_depth[0],

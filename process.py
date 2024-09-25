@@ -2,7 +2,7 @@ import os, glob, cv2, argparse, torch, rembg, sys, pdb
 import numpy as np
 import open3d as o3d
 from PIL import Image
-from cam_utils import downsampler
+from cam_utils import downsampler, list_downsampler
 from lidar2dep.config import Get_Merged_Args, get_args_parser
 from lidar2dep.main import Args2Results, Direct_Renderring
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
@@ -183,6 +183,16 @@ def process_first(
             colored_pred_fg, colored_init_fg, pred_fg = cv2.imread(os.path.join(opt.results, f'pred_depth-{extra_name}-fg.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_depth-{extra_name}-fg.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_init-{extra_name}-fg.jpg'))
             colored_pred_bg, colored_init_bg, pred_bg = cv2.imread(os.path.join(opt.results, f'pred_depth-{extra_name}-bg.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_depth-{extra_name}-bg.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_init-{extra_name}-bg.jpg'))
             colored_pred_all, colored_init, pred = cv2.imread(os.path.join(opt.results, f'pred_depth-{extra_name}-panoptic.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_depth-{extra_name}-panoptic.jpg')), cv2.imread(os.path.join(opt.results, f'colored_pred_init-{extra_name}-panoptic.jpg'))
+
+            # colored_pred_fg, colored_init_fg, pred_fg, \
+            #     colored_pred_bg, colored_init_bg, pred_bg, \
+            #     colored_pred_all, colored_init, pred = \
+            #     list_downsampler([
+            #         colored_pred_fg, colored_init_fg, pred_fg,
+            #         colored_pred_bg, colored_init_bg, pred_bg,
+            #         colored_pred_all, colored_init, pred
+            #     ], opt.downsample)
+
 
             pred_depth.append({
                 'rgb': image,  # pil

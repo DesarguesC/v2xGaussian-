@@ -38,6 +38,10 @@ def downsampler(img: any, downsample: int):
         return None
 
 
+def list_downsampler(img_list: list, downsample: int):
+    if img_list is []: return []
+    return [downsampler(img, downsample) for img in img_list]
+
 
 def dot(x, y):
     if isinstance(x, np.ndarray):

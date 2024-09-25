@@ -850,14 +850,9 @@ def CreateCamera(
     target = depth_map.copy()
     target = ((target != 0) * 255).astype(np.uint8) # mask
     source_depth = np.mean(source_depth, axis=-1)
-    print(f'[DEBUG] source_depth = {source_depth.shape}, depth_map.shape = {depth_map.shape}, depth_weight.shape = {depth_weight.shape}')
+    print(f'[DEBUG] rgb_img.size = {rgb_img.size},  source_depth = {source_depth.shape}, depth_map.shape = {depth_map.shape}, depth_weight.shape = {depth_weight.shape}')
+    # read_only情况下跑出来size差两倍
     depth_map, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=(depth_map > 0.), depth_weight=depth_weight)
-    # import cv2
-    # from render import depth_colorize_with_mask
-    #
-    # source, refined = depth_colorize_with_mask(source_depth[None, :, :],
-    #                                            dmindmax=(0.0, 5.0)).squeeze(), depth_colorize_with_mask(
-    #     depthmap[None, :, :], dmindmax=(20.0, 130.0)).squeeze()
 
     print(f'depth_map.shape = {depth_map.shape}') # np.ndarray
     if not os.path.exists('./debug'): os.mkdir('./debug')
@@ -926,6 +921,7 @@ class Scene:
         self.gaussians.create_from_pcd(getattr(dair_info, f'{type}_pcd'), self.cameras_extent)
 
         # cameraList_from_camInfos
+
         cam_infos = [CreateCamera(dair_item, dair_info, side_info, type_) for type_ in [type, anti_type]]
         train_cam_infos = [cam_infos[0]] if eval else cam_infos # 当前type必然参与训练
         test_cam_infos = [cam_infos[1]] if eval else []
