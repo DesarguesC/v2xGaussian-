@@ -263,7 +263,7 @@ def train_DRGS(
         foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
 
 
-    # torch.empty_cache()  # TODO: checkout version
+    torch.cuda.empty_cache()
 
     # TODO-1: find where to read camera intrinsics/extrinsics, amend them respectively.
     # TODO-2: original dataset pre stored multi-views, while we only sample two views.
@@ -361,13 +361,14 @@ def train_DRGS(
         # TODO: 原始DRGS代码再viewpoint_cam.original_depth和viewpoint_cam.original_iamge处提供了ground truth，我换个地方提供
 
         # Render
-        if (iteration - 1) == debug_from:
-            pipe.debug = True
+        # if (iteration - 1) == debug_from:
+        # TODO: debug
+        pipe.debug = True
 
         bg = torch.rand((3), device="cuda") if opt.random_background else background
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
 
-        pdb.set_trace()
+        # pdb.set_trace()
         render_pkg = render(viewpoint, gaussian, pipe, bg)
         # RuntimeError: CUDA error: an illegal memory access was encountered
         image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
@@ -503,7 +504,7 @@ def main():
     # prepared_idx = randint(0, 1000) % 600  # random
     prepared_idx = 0 # TEST
     pair = CooperativeData(dair[prepared_idx], base_dir) # dair_item
-    processed_dict = process_first(parser = None, dair_item = pair, debug_part = False, read_only=True)
+    processed_dict = process_first(parser = None, dair_item = pair, debug_part = False, read_only=os.environ.get('READ_ONLY'))
     print('-'*20 + 'Finish Reading' + '-'*20)
     """
     {
