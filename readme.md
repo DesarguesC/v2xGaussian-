@@ -67,3 +67,11 @@ which can be solved by directly amend the file where import error occurred.
 put your OpenAI/Anthropic Token in 'key.csv', Anthropic Claude is highly recommended.
 
 
+## Debug-Mode
+
+For debugging, run the command
+```bash
+export READ_ONLY=1 && export CUDA_LAUNCH_BLOCKING=1 && srun python drgs.py --downsample <downsample scale>
+```
+
+
