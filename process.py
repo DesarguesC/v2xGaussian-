@@ -146,16 +146,15 @@ def process_first(
     print(f'files: {files}')
     idxxx = 0
     for file in files:
-        print(f'[Debug] <now> idxxx = {idxxx}')
+        # print(f'[Debug] <now> idxxx = {idxxx}')
         idxxx += 1
         rgb_file = file['rgb'] # pil
         pcd_file_path = file['pcd']
         pcd_file = o3d.io.read_point_cloud(pcd_file_path)
-        camera = file['camera']
-        extra_name = file['extra']
-
 
         # pdb.set_trace()
+        camera = file['camera']
+        extra_name = file['extra']
 
         if rgb_file is None:
             # 算变换矩阵

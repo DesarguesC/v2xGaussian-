@@ -2,6 +2,7 @@ import pdb
 from process import process_first
 import os, sys, uuid, cv2, torch, torchvision
 from tqdm import tqdm
+import open3d as o3d
 from random import randint
 
 from drgs_utils.gaussian_renderer import render, network_gui
@@ -200,6 +201,10 @@ def train_DRGS(
     else: args.h = h
     dataset, opt, pipe = lp.extract(args), op.extract(args), pp.extract(args)
 
+
+    # TODO: cut down points in pcd
+    inf_side_info['pcd'] = cut_down_points(inf_side_info['pcd'], 1. / args.downsample)
+    veh_side_info['pcd'] = cut_down_points(veh_side_info['pcd'], 1. / args.downsample)
 
     testing_iterations = args.test_iterations
     saving_iterations = args.save_iterations
@@ -498,13 +503,20 @@ def parser_add(parser=None):
 
 
 def main():
+
+
+
     base_dir = '../dair-test'
     dair = DAIR_V2X_C(base_dir)
     from random import randint
     # prepared_idx = randint(0, 1000) % 600  # random
     prepared_idx = 0 # TEST
     pair = CooperativeData(dair[prepared_idx], base_dir) # dair_item
-    processed_dict = process_first(parser = None, dair_item = pair, debug_part = False, read_only=os.environ.get('READ_ONLY'))
+
+    read_only = bool(int(os.environ.get('READ_ONLY')))
+    print(f'READ_ONLY = {read_only}')
+    # exit(0)
+    processed_dict = process_first(parser = None, dair_item = pair, debug_part = False, read_only=read_only)
     print('-'*20 + 'Finish Reading' + '-'*20)
     """
     {
@@ -543,11 +555,21 @@ def main():
     parser = parser_add(parser)
     # print(f'parser.w = {parser.w}, parser.h = {parser.h}')
 
+
     train_DRGS(
         args = parser, dair_item = pair,
         inf_side_info = inf_side, veh_side_info = veh_side,
         inf_view_veh = inf_view_veh, veh_view_inf = veh_view_inf
     )
+
+def cut_down_points(pcd, pro: float):
+    pdb.set_trace()
+    # pro: 1. / opt.downsample
+    x = np.asarray(pcd.points)
+    uu = np.concatenate([x[i].reshape((1, 3)) for i in range(x.shape[0]) if (randint(0, 999) < 1e3 * pro)], axis=0)
+    pcd.points = o3d.cuda.pybind.utility.Vector3dVector(uu)
+    return pcd
+
 
 
 
