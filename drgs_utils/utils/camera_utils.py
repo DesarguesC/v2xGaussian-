@@ -41,6 +41,8 @@ class Camera(nn.Module):
         self.original_image = image.clamp(0.0, 1.0).to(self.data_device)
         self.canny_mask = image2canny(self.original_image.permute(1,2,0), 50, 150, isEdge1=False).detach().to(self.data_device)
         self.original_depth = depth.to(self.data_device) if depth is not None else None
+        if self.original_depth is not None:
+            self.original_depth = (self.original_depth - torch.min(self.original_depth)) / (torch.max(self.original_depth) - torch.min(self.original_depth))
         self.original_depth_weight = depth_weight.to(self.data_device) if depth_weight is not None else None
         self.original_mask = gt_alpha_mask if gt_alpha_mask is not None else None
         # self.original_mask = gt_alpha_mask>0.9 if gt_alpha_mask is not None else None

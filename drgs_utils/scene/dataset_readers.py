@@ -851,7 +851,7 @@ def CreateCamera(
     target = ((target != 0) * 255).astype(np.uint8) # mask
     source_depth = np.mean(source_depth, axis=-1)
     print(f'[DEBUG] rgb_img.size = {rgb_img.size},  source_depth = {source_depth.shape}, depth_map.shape = {depth_map.shape}, depth_weight.shape = {depth_weight.shape}')
-    # read_only情况下跑出来size差两倍
+
     depth_map, depthloss = optimize_depth(source=source_depth, target=depth_map, mask=(depth_map > 0.), depth_weight=depth_weight)
 
     print(f'depth_map.shape = {depth_map.shape}') # np.ndarray

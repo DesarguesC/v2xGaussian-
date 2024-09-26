@@ -30,6 +30,8 @@ namespace cg = cooperative_groups;
 #include "forward.h"
 #include "backward.h"
 
+// #define int long long
+
 // Helper function to find the next-highest bit of the MSB
 // on the CPU.
 uint32_t getHigherMsb(uint32_t n)

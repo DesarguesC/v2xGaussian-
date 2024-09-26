@@ -373,7 +373,7 @@ def train_DRGS(
         bg = torch.rand((3), device="cuda") if opt.random_background else background
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
 
-        # pdb.set_trace()
+        pdb.set_trace()
         render_pkg = render(viewpoint, gaussian, pipe, bg)
         # RuntimeError: CUDA error: an illegal memory access was encountered
         image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
