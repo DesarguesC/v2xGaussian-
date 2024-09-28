@@ -197,7 +197,13 @@ class GaussianRasterizer(nn.Module):
         
         if ((scales is None or rotations is None) and cov3D_precomp is None) or ((scales is not None or rotations is not None) and cov3D_precomp is not None):
             raise Exception('Please provide exactly one of either scale/rotation pair or precomputed 3D covariance!')
-        
+
+        if None in [shs, colors_precomp, scales, rotations, cov3D_precomp]:
+            print('-'*20 + "None!" + '-'*20)
+            pdb.set_trace()
+
+
+
         if shs is None:
             shs = torch.Tensor([])
         if colors_precomp is None:
