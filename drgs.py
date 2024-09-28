@@ -1,4 +1,5 @@
 import pdb
+from einops import rearrange
 from process import process_first
 import os, sys, uuid, cv2, torch, torchvision
 from tqdm import tqdm
@@ -262,10 +263,10 @@ def train_DRGS(
 
     # Calculate a mask ?
     with torch.no_grad():
-        foc1_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
-        foc1_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
-        foc2_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
-        foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True))
+        foc1_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
+        foc1_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
+        foc2_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
+        foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
 
 
     torch.cuda.empty_cache()
@@ -310,6 +311,8 @@ def train_DRGS(
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
 
+    pdb.set_trace()
+
     for iteration in range(first_iter, opt.iterations + 1):
 
         train_now_idx = randint(0,1) # [0,1]
@@ -317,11 +320,12 @@ def train_DRGS(
 
         gaussian = train_now['gaussian']
         scene = train_now['scene']
-        fg_mask = train_now['mask']
+        fg_mask = rearrange(torch.tensor(train_now['mask']), 'h w c -> c h w').requires_grad_(False).cuda()
+
         with torch.no_grad():
             bg_mask = 1. - fg_mask
-        dep = train_now['depth']['panoptic'][-1] # panoptic, uncolored
-        viewer_depth = train_now['view']
+        dep = rearrange(torch.tensor(train_now['depth']['panoptic'][-1]), 'h w c -> c h w').requires_grad_(False).cuda() # panoptic, uncolored
+        viewer_depth = torch.tensor(train_now['view']).requires_grad_(False).cuda()
 
         foc = train_now['foc']
         extra_name = train_now['name']
@@ -341,7 +345,7 @@ def train_DRGS(
                     """
                     net_image = render(custom_cam, gaussian, pipe, background, scaling_modifer)["render"]
                     # net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
-                    print(f"[Debug] | net_image.shape = {net_image.shape}, foc.shape = {foc.shape}")
+                    # print(f"[Debug] | net_image.shape = {net_image.shape}, foc.shape = {foc.shape}")
                     net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
                 network_gui.send(net_image_bytes, dataset.source_path)
                 if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
@@ -371,11 +375,10 @@ def train_DRGS(
         bg = torch.rand((3), device="cuda") if opt.random_background else background
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
 
-        pdb.set_trace() # Double Check: viewpoint
         render_pkg = render(viewpoint, gaussian, pipe, bg)
-        # RuntimeError: CUDA error: an illegal memory access was encountered
         image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
-        #  RuntimeError: CUDA error: an illegal memory access was encountered
+
+        # pdb.set_trace()  # Double Check: viewpoint
         depth_rendered = foc[0] * depth_rendered + foc[1] * viewer_depth
         # foc * depth_rendered ? foc * viewer_depth ?
         # TODO: Bind
@@ -396,11 +399,11 @@ def train_DRGS(
 
         depth_rendered = normalize_depth(depth_rendered)
 
-        print(f'[Debug] depth_rendered.shape = {depth_rendered.shape}, fg_mask.shape = {fg_mask.shape}')
+        # print(f'[Debug] depth_rendered.shape = {depth_rendered.shape}, fg_mask.shape = {fg_mask.shape}')
         deploss = 0.5 * l1_loss((dep * fg_mask).cuda(), (depth_rendered * fg_mask).cuda()) + 0.5 * l1_loss((dep * bg_mask).cuda(), (depth_rendered * bg_mask).cuda())
         loss = loss + deploss
 
-
+        # pdb.set_trace()
         ## depth regularization loss (canny)
         if usedepthReg and iteration >= 0:
             depth_mask = (depth_rendered > 0).detach()
@@ -419,12 +422,15 @@ def train_DRGS(
             ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
             ema_depthloss_for_log = 0.2 * deploss.item() + 0.8 * ema_depthloss_for_log
             if iteration % 10 == 0:
+                # pdb.set_trace()
                 progress_bar.set_postfix(
                     {"Loss": f"{ema_loss_for_log:.{7}f}", "Deploss": f"{ema_depthloss_for_log:.4f}",
                      "#pts": gaussian._xyz.shape[0]})
                 progress_bar.update(10)
 
             if iteration % 100 == 0:
+                # if iteration % 1000 == 0:
+                #     pdb.set_trace()
                 if iteration > opt.min_iters and ema_depthloss_for_log > prev_depthloss:
                     Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
                                     [iteration], scene, render,
@@ -443,14 +449,16 @@ def train_DRGS(
                             testing_iterations, scene, render,
                             (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
             if (iteration in saving_iterations):
-                print("\n[ITER {}] Saving Gaussians".format(iteration))
+                # print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
 
             # Densification
             if iteration < opt.densify_until_iter and ((not usedepth) or gaussian._xyz.shape[0] <= 1500000):
                 # Keep track of max radii in image-space for pruning
-                gaussian.max_radii2D[visibility_filter] = torch.max(gaussian.max_radii2D[visibility_filter],
-                                                                     radii[visibility_filter])
+
+                # pdb.set_trace()
+
+                gaussian.max_radii2D[visibility_filter] = torch.max(gaussian.max_radii2D[visibility_filter], radii[visibility_filter])
                 gaussian.add_densification_stats(viewspace_point_tensor, visibility_filter)
 
                 if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:

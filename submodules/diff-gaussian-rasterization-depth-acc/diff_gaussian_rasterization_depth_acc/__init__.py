@@ -81,7 +81,7 @@ class _RasterizeGaussians(torch.autograd.Function):
 
         # Invoke C++/CUDA rasterizer
         if raster_settings.debug:
-            pdb.set_trace()
+            # pdb.set_trace()
             cpu_args = cpu_deep_copy_tuple(args) # Copy them before they can be corrupted
             try:
                 num_rendered, color, depth, acc, radii, geomBuffer, binningBuffer, imgBuffer = _C.rasterize_gaussians(*args)
@@ -210,7 +210,7 @@ class GaussianRasterizer(nn.Module):
         if cov3D_precomp is None:
             cov3D_precomp = torch.Tensor([]).to(shs.device)
 
-        pdb.set_trace()
+        # pdb.set_trace()
         # Invoke C++/CUDA rasterization routine
         return rasterize_gaussians(
             means3D,

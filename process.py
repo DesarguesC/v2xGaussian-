@@ -56,11 +56,6 @@ def wirte_pred_depth(pred_item: dict = None, idx: int = None):
 
 
 
-
-
-
-
-
 def process_first(
         parser = None, dair_item: CooperativeData = None, debug_part: bool = False, read_only: bool = False
         # rgb_file_path: list[str] = None, pcd_file_path: list[str] = None,
