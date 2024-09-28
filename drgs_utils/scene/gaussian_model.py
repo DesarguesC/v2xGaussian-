@@ -124,10 +124,14 @@ class GaussianModel:
     def create_from_pcd(self, pcd : BasicPointCloud, spatial_lr_scale : float):
         self.spatial_lr_scale = spatial_lr_scale
         fused_point_cloud = torch.tensor(np.asarray(pcd.points)).float().cuda()
-        fused_color = RGB2SH(torch.tensor(np.asarray(pcd.colors)).float().cuda())
+        # pcd.colors: None
+        pdb.set_trace()
+        colors = np.asarray(pcd.colors)
+        if 0 in colors.shape:
+            colors = torch.tensor(np.random.rand(fused_point_cloud.shape[0], 3)).float().cuda()
+        fused_color = RGB2SH(torch.tensor(colors).float().cuda())
 
         print('Dealing with SHS...')
-        pdb.set_trace()
         features = torch.zeros((fused_color.shape[0], 3, (self.max_sh_degree + 1) ** 2)).float().cuda()
         features[:, :3, 0 ] = fused_color
         features[:, 3:, 1:] = 0.0

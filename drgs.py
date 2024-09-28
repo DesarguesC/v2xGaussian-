@@ -350,8 +350,6 @@ def train_DRGS(
                 print(f'err: {e}')
                 network_gui.conn = None
 
-
-
         iter_start.record()
         gaussian.update_learning_rate(iteration)
         # Every 1000 its we increase the levels of SH up to a maximum degree
@@ -373,7 +371,7 @@ def train_DRGS(
         bg = torch.rand((3), device="cuda") if opt.random_background else background
         # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
 
-        pdb.set_trace()
+        pdb.set_trace() # Double Check: viewpoint
         render_pkg = render(viewpoint, gaussian, pipe, bg)
         # RuntimeError: CUDA error: an illegal memory access was encountered
         image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
@@ -504,8 +502,6 @@ def parser_add(parser=None):
 
 def main():
 
-
-
     base_dir = '../dair-test'
     dair = DAIR_V2X_C(base_dir)
     from random import randint
@@ -563,7 +559,7 @@ def main():
     )
 
 def cut_down_points(pcd, pro: float):
-    pdb.set_trace()
+    # pdb.set_trace()
     # pro: 1. / opt.downsample
     x = np.asarray(pcd.points)
     uu = np.concatenate([x[i].reshape((1, 3)) for i in range(x.shape[0]) if (randint(0, 999) < 1e3 * pro)], axis=0)
