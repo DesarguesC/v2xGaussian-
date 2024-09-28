@@ -203,7 +203,14 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	  dL_drotations.contiguous().data<float>(),
 	  debug);
   }
-
+  printf("dL_dmeans2D.size = (%d,%d,%d), dL_dL_dcolors.size = (%d,%d,%d), dL_dopacity.size = (%d,%d,%d)\n",
+    dL_dmeans2D.size(0),dL_dmeans2D.size(1),dL_dmeans2D.size(2), dL_dL_dcolors.size(0),dL_dL_dcolors.size(1),dL_dL_dcolors.size(2),
+    dL_dopacity.size(0),dL_dopacity.size(1),dL_dopacity.size(2)
+  )
+  printf("dL_dL_dmeans3D.size = (%d,%d,%d), dL_dcov3D.size = (%d,%d,%d), dL_dsh.size = (%d,%d,%d), dL_dscales.size = (%d,%d,%d)\n",
+    dL_dL_dmeans3D.size(0),dL_dL_dmeans3D.size(1),dL_dL_dmeans3D.size(2),dL_dcov3D.size(0),dL_dcov3D.size(1),dL_dcov3D.size(2),
+    dL_dsh.size(0),dL_dsh.size(1),dL_dsh.size(2), dL_dscales.size(0),dL_dscales.size(1),dL_dscales.size(2)
+  )
   return std::make_tuple(dL_dmeans2D, dL_dcolors, dL_dopacity, dL_dmeans3D, dL_dcov3D, dL_dsh, dL_dscales, dL_drotations);
 }
 

@@ -894,8 +894,9 @@ class Scene:
         :param path: Path to colmap scene main folder.
         """
         self.model_path = dair_item.model_path # dair path
-        self.teyp = type
+        self.type = type
         anti_type = 'inf' if type == 'veh' else 'veh'
+        self.anti_type = anti_type
         self.gaussians = gaussians
 
         """
@@ -934,6 +935,8 @@ class Scene:
                            nerf_normalization=self.cameras_extent,
                            ply_path=getattr(dair_item, f'{type}_ply_store_path')
                         )
+
+        self.scene_info = scene_info # TODO: for debug
 
         self.train_cameras, self.test_cameras = {}, {}
         # self.train_cameras[]
