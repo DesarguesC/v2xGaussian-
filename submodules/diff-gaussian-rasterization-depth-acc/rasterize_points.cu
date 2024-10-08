@@ -25,17 +25,26 @@
 #include <functional>
 
 // donot add "__global__"
-void print_infos(torch::Tensor dL_dmeans3D, torch::Tensor dL_dmeans2D, torch::Tensor dL_dcolors, torch::Tensor dL_dopacity, torch::Tensor dL_dcov3D, torch::Tensor dL_dsh, torch::Tensor dL_dscales) {
-    printf("\n\n\n\ndL_dmeans2D.size = (%ld,%ld,%ld), dL_dcolors.size = (%ld,%ld,%ld), dL_dopacity.size = (%ld,%ld,%ld)\n",
-    dL_dmeans2D.size(0),dL_dmeans2D.size(1),dL_dmeans2D.size(2),
-    dL_dcolors.size(0),dL_dcolors.size(1),dL_dcolors.size(2),
-    dL_dopacity.size(0),dL_dopacity.size(1),dL_dopacity.size(2)
+void print_infos(
+    const torch::Tensor dL_dmeans3D,
+    const torch::Tensor dL_dmeans2D,
+    const torch::Tensor dL_dcolors,
+    const torch::Tensor dL_dopacity,
+    const torch::Tensor dL_dcov3D,
+    const torch::Tensor dL_dsh,
+    const torch::Tensor dL_dscales
+    ) {
+    // size ranged [-2,1]
+    printf("\n\ndL_dmeans2D.size = (%ld,%ld,%ld,%ld), dL_dcolors.size = (%ld,%ld,%ld,%ld), dL_dopacity.size = (%ld,%ld,%ld,%ld)\n",
+       dL_dmeans2D.size(-2),dL_dmeans2D.size(-1),dL_dmeans2D.size(0),dL_dmeans2D.size(1),
+       dL_dcolors.size(-2),dL_dcolors.size(-1),dL_dcolors.size(0),dL_dcolors.size(1),
+       dL_dopacity.size(-2),dL_dopacity.size(-1),dL_dopacity.size(0),dL_dopacity.size(1)
   );
-  printf("dL_dL_dmeans3D.size = (%ld,%ld,%ld), dL_dcov3D.size = (%ld,%ld,%ld), dL_dsh.size = (%ld,%ld,%ld), dL_dscales.size = (%ld,%ld,%ld)\n\n\n\n\n",
-    dL_dmeans3D.size(0),dL_dmeans3D.size(1),dL_dmeans3D.size(2),
-    dL_dcov3D.size(0),dL_dcov3D.size(1),dL_dcov3D.size(2),
-    dL_dsh.size(0),dL_dsh.size(1),dL_dsh.size(2),
-    dL_dscales.size(0),dL_dscales.size(1),dL_dscales.size(2)
+  printf("dL_dL_dmeans3D.size = (%ld,%ld,%ld,%ld), dL_dcov3D.size = (%ld,%ld,%ld,%ld), dL_dsh.size = (%ld,%ld,%ld,%ld), dL_dscales.size = (%ld,%ld,%ld,%ld)\n\n",
+       dL_dmeans3D.size(-2),dL_dmeans3D.size(-1),dL_dmeans3D.size(0),dL_dmeans3D.size(1),
+       dL_dcov3D.size(-2),dL_dcov3D.size(-1),dL_dcov3D.size(0),dL_dcov3D.size(1),
+       dL_dsh.size(-2),dL_dsh.size(-1),dL_dsh.size(0),dL_dsh.size(1),
+       dL_dscales.size(-2),dL_dscales.size(-1),dL_dscales.size(0),dL_dscales.size(1)
   );
 //   return;
 }

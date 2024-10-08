@@ -312,14 +312,11 @@ def train_DRGS(
     first_iter += 1
 
     pdb.set_trace()
-
     try:
 
         for iteration in range(first_iter, opt.iterations + 1):
-
             if iteration >= 3099:
                 pdb.set_trace()
-
 
             train_now_idx = randint(0,1) # [0,1]
             train_now = TrainTargets[train_now_idx]
@@ -481,7 +478,7 @@ def train_DRGS(
 
                     # Optimizer step
                     if iteration < opt.iterations:
-                        with torch.no_grad:
+                        with torch.no_grad():
                             gaussian.optimizer.step()
                             gaussian.optimizer.zero_grad(set_to_none=True)
 

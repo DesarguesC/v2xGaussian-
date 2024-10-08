@@ -107,6 +107,7 @@ class _RasterizeGaussians(torch.autograd.Function):
         colors_precomp, depth, acc, means3D, scales, rotations, cov3Ds_precomp, radii, sh, geomBuffer, binningBuffer, imgBuffer = ctx.saved_tensors
 
         # Restructure args as C++ method expects them
+        # pdb.set_trace()
         args = (raster_settings.bg,
                 means3D, 
                 radii,
@@ -133,6 +134,7 @@ class _RasterizeGaussians(torch.autograd.Function):
                 raster_settings.debug)
 
         # Compute gradients for relevant tensors by invoking backward method
+        # pdb.set_trace()
         if raster_settings.debug:
             cpu_args = cpu_deep_copy_tuple(args) # Copy them before they can be corrupted
             try:
@@ -198,11 +200,9 @@ class GaussianRasterizer(nn.Module):
         if ((scales is None or rotations is None) and cov3D_precomp is None) or ((scales is not None or rotations is not None) and cov3D_precomp is not None):
             raise Exception('Please provide exactly one of either scale/rotation pair or precomputed 3D covariance!')
 
-        if None in [shs, colors_precomp, scales, rotations, cov3D_precomp]:
-            print('-'*20 + "None!" + '-'*20)
-            pdb.set_trace()
-
-
+        # if None in [shs, colors_precomp, scales, rotations, cov3D_precomp]:
+        #     print('-'*20 + "None!" + '-'*20)
+        #     pdb.set_trace()
 
         if shs is None:
             shs = torch.Tensor([])
