@@ -24,19 +24,20 @@
 #include <string>
 #include <functional>
 
-__global__ void print_infos(torch::Tensor dL_dmeans3D, torch::Tensor dL_dmeans2D, torch::Tensor dL_dcolors, torch::Tensor dL_dopacity, torch::Tensor dL_dcov3D, torch::Tensor dL_dsh, torch::Tensor dL_dscales) {
-    printf("\n\n\n\ndL_dmeans2D.size = (%d,%d,%d), dL_dcolors.size = (%d,%d,%d), dL_dopacity.size = (%d,%d,%d)\n",
+// donot add "__global__"
+void print_infos(torch::Tensor dL_dmeans3D, torch::Tensor dL_dmeans2D, torch::Tensor dL_dcolors, torch::Tensor dL_dopacity, torch::Tensor dL_dcov3D, torch::Tensor dL_dsh, torch::Tensor dL_dscales) {
+    printf("\n\n\n\ndL_dmeans2D.size = (%ld,%ld,%ld), dL_dcolors.size = (%ld,%ld,%ld), dL_dopacity.size = (%ld,%ld,%ld)\n",
     dL_dmeans2D.size(0),dL_dmeans2D.size(1),dL_dmeans2D.size(2),
     dL_dcolors.size(0),dL_dcolors.size(1),dL_dcolors.size(2),
     dL_dopacity.size(0),dL_dopacity.size(1),dL_dopacity.size(2)
   );
-  printf("dL_dL_dmeans3D.size = (%d,%d,%d), dL_dcov3D.size = (%d,%d,%d), dL_dsh.size = (%d,%d,%d), dL_dscales.size = (%d,%d,%d)\n\n\n\n\n",
-    dL_dL_dmeans3D.size(0),dL_dL_dmeans3D.size(1),dL_dL_dmeans3D.size(2),
+  printf("dL_dL_dmeans3D.size = (%ld,%ld,%ld), dL_dcov3D.size = (%ld,%ld,%ld), dL_dsh.size = (%ld,%ld,%ld), dL_dscales.size = (%ld,%ld,%ld)\n\n\n\n\n",
+    dL_dmeans3D.size(0),dL_dmeans3D.size(1),dL_dmeans3D.size(2),
     dL_dcov3D.size(0),dL_dcov3D.size(1),dL_dcov3D.size(2),
     dL_dsh.size(0),dL_dsh.size(1),dL_dsh.size(2),
     dL_dscales.size(0),dL_dscales.size(1),dL_dscales.size(2)
   );
-  return;
+//   return;
 }
 
 std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {

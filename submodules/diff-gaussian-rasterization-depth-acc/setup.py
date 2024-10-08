@@ -28,7 +28,9 @@ setup(
             "ext.cpp"],
             extra_compile_args={
                 "nvcc": ["-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party/glm/"), '-G', '-g'],
-                "cxx": ['-g']
+                "cxx": ['-O0', '-g'], # add for debug, remove it when completing.
+                # "cxx": ['-g'],
+                # "gcc": ['-O0', '-g'], # → conflict with "nvcc"
             }
         )
         ],
