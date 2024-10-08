@@ -228,7 +228,7 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
 	  dL_drotations.contiguous().data<float>(),
 	  debug);
   }
-  print_infos(dL_dmeans3D, dL_dmeans2D, dL_dcolors, dL_dopacity, dL_dcov3D, dL_dsh, dL_dscales);
+//   print_infos(dL_dmeans3D, dL_dmeans2D, dL_dcolors, dL_dopacity, dL_dcov3D, dL_dsh, dL_dscales);
   return std::make_tuple(dL_dmeans2D, dL_dcolors, dL_dopacity, dL_dmeans3D, dL_dcov3D, dL_dsh, dL_dscales, dL_drotations);
 }
 

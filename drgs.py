@@ -315,14 +315,19 @@ def train_DRGS(
     try:
 
         for iteration in range(first_iter, opt.iterations + 1):
-            if iteration >= 3099:
-                pdb.set_trace()
+            # if iteration >= 3099:
+            #     pdb.set_trace()
 
             train_now_idx = randint(0,1) # [0,1]
             train_now = TrainTargets[train_now_idx]
 
             gaussian = train_now['gaussian']
             scene = train_now['scene']
+
+            if 0 in scene.gaussians._xyz.shape:
+                opt.iterations += 1
+                continue
+
             fg_mask = rearrange(torch.tensor(train_now['mask']), 'h w c -> c h w').requires_grad_(False).cuda()
 
             with torch.no_grad():
