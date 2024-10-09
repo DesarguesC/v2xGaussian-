@@ -24,7 +24,9 @@ mvdream: False
 # use imagedream
 imagedream: True
 # use stable-zero123 instead of zero123-xl
-stable_zero123: False 
+stable_zero123: False
+# use dynamic reflection of texture via control net
+stable_control: False
 # guidance loss weights (0 to disable)
 lambda_sd: 1
 lambda_zero123: 0

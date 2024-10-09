@@ -128,11 +128,18 @@ class GUI:
                 from guidance.imagedream_utils import ImageDream
                 self.guidance_sd = ImageDream(self.device)
                 print(f"[INFO] loaded ImageDream!")
-            else:
+            elif self.opt.stable_zero123:
                 print(f"[INFO] loading SD...")
                 from guidance.sd_utils import StableDiffusion
                 self.guidance_sd = StableDiffusion(self.device)
                 print(f"[INFO] loaded SD!")
+            elif hasattr('stable_control', self.opt) and self.opt.stable_control:
+                print(f"[INFO] loading SC...")
+                # from guidance.sd_utils import StableDiffusion -> 写一个可以调用的ControlNet，用于动态纹理渲染
+                # self.guidance_sd = StableDiffusion(self.device)
+                self.gauidance_sd = ...
+                print(f"[INFO] loaded SC!")
+
 
         if self.guidance_zero123 is None and self.enable_zero123:
             print(f"[INFO] loading zero123...")
