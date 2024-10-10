@@ -74,7 +74,7 @@ scaling_lr: 0.005
 rotation_lr: 0.005
 percent_dense: 0.01
 density_start_iter: 100
-density_end_iter: 3000
+density_end_iter: 30000
 densification_interval: 100
 opacity_reset_interval: 700
 densify_grad_threshold: 0.01
