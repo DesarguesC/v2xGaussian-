@@ -5,6 +5,7 @@ import os, sys, uuid, cv2, torch, torchvision
 from tqdm import tqdm
 import open3d as o3d
 from random import randint
+from basicsr.utils import tensor2img, img2tensor
 
 from drgs_utils.gaussian_renderer import render, network_gui
 from drgs_utils.scene import GaussianModel
@@ -497,6 +498,59 @@ def train_DRGS(
 
 
     print('\nTraining Process Finished.\n')
+    # save weights: foc[i,j], depth, camera-param
+
+    M1_path, M2_path = os.path.join(opt.save_path, 'M1'), os.path.join(opt.save_path, 'M2')
+    if not os.path.exists(M1_path): os.mkdir(M1_path)
+    if not os.path.exists(M2_path): os.mkdir(M2_path)
+    torch.save(foc1_a, os.path.join(opt.save_path, 'foc1_a.pth')) # 直接torch.load即可
+    torch.save(foc1_b, os.path.join(opt.save_path, 'foc1_b.pth'))
+    torch.save(foc2_a, os.path.join(opt.save_path, 'foc2_a.pth'))
+    torch.save(foc2_b, os.path.join(opt.save_path, 'foc2_b.pth'))
+
+    # if not viewpoint_stack:
+    viewpoint_stack_inf, viewpoint_stack_veh = inf_scene.getTrainCameras().copy(), veh_scene.getTrainCameras().copy()
+    viewpoint_inf = viewpoint_stack_inf.pop(randint(0, len(viewpoint_stack_inf) - 1))
+    viewpoint_veh = viewpoint_stack_veh.pop(randint(0, len(viewpoint_stack_veh) - 1))
+
+    bg = torch.rand((3), device="cuda") if opt.random_background else background
+    # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
+
+    render_pkg = render(viewpoint_inf, gaussians_inf, pipe, bg)
+    image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
+    # pdb.set_trace()  # Double Check: viewpoint
+    depth_rendered = foc1_a * depth_rendered + foc1_b * inf_view_veh
+    depth_rendered = normalize_depth(depth_rendered)
+
+    img_inf = image_side_rendered.detach().cpu().numpy()
+    dep_inf = depth_rendered.detach().cpu().numpy()
+    print(f'img_inf.shape = {img_inf.shape}, dep_inf.shape = {dep_inf.shape}')
+    pdb.set_trace()
+
+    cv2.imwrite(os.path.join(M1_path, 'rgb.jpg'), img_inf)
+    cv2.imwrite(os.path.join(M1_path, 'dep.jpg'), dep_inf)
+
+
+    render_pkg = render(viewpoint_veh, gaussians_veh, pipe, bg)
+    image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
+    depth_rendered = foc2_a * depth_rendered + foc2_b * veh_view_inf
+    depth_rendered = normalize_depth(depth_rendered)
+
+    img_veh = image_side_rendered.detach().cpu().numpy()
+    dep_veh = depth_rendered.detach().cpu().numpy()
+    print(f'img_veh.shape = {img_veh.shape}, dep_veh.shape = {dep_veh.shape}')
+    pdb.set_trace()
+
+    cv2.imwrite(os.path.join(M2_path, 'rgb.jpg'), img_veh)
+    cv2.imwrite(os.path.join(M2_path, 'dep.jpg'), dep_veh)
+
+
+
+
+
+
+
+
     pdb.set_trace()
 
 
@@ -526,6 +580,9 @@ def parser_add(parser=None):
 def main():
 
     base_dir = '../dair-test'
+    save_dir = os.path.join(base_dir, 'weights')
+    if not os.path.exists(save_dir): os.mkdir(save_dir)
+
     dair = DAIR_V2X_C(base_dir)
     from random import randint
     # prepared_idx = randint(0, 1000) % 600  # random
@@ -572,7 +629,8 @@ def main():
     veh_view_inf = processed_dict['veh-side-inf']
 
     parser = parser_add(parser)
-    # print(f'parser.w = {parser.w}, parser.h = {parser.h}')
+    parser.add_argument('--save_dir', type=str, default=save_dir)
+    # save foc[i,j] here, save depth/camera-param here
 
 
     train_DRGS(
