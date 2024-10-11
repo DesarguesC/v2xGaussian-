@@ -137,7 +137,7 @@ class GUI:
                 print(f"[INFO] loading SC...")
                 # from guidance.sd_utils import StableDiffusion -> 写一个可以调用的ControlNet，用于动态纹理渲染
                 # self.guidance_sd = StableDiffusion(self.device)
-                self.gauidance_sd = ...
+                self.guidance_sd = ...
                 print(f"[INFO] loaded SC!")
 
 
