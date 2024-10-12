@@ -307,11 +307,16 @@ def train_DRGS(
         }
     ]
 
+    M1_path, M2_path = os.path.join(args.save_dir, 'M1'), os.path.join(args.save_dir, 'M2')
+    if not os.path.exists(M1_path): os.mkdir(M1_path)
+    if not os.path.exists(M2_path): os.mkdir(M2_path)
+
     viewpoint_stack = None
     ema_loss_for_log = 0.0
     ema_depthloss_for_log, prev_depthloss, deploss = 0.0, 1e2, torch.zeros(1)
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
+    save_flag = True
 
     pdb.set_trace()
     try:
@@ -395,6 +400,25 @@ def train_DRGS(
             # TODO: Bind
             # 如何合并？radii, visibility_filter都是用来控制GS球分裂&合并的，Densification
             visibility_filter, radii, viewspace_point_tensor = render_pkg["visibility_filter"], render_pkg["radii"], render_pkg['viewspace_points']
+
+            if iteration % 5 == 0:
+                if save_flag:
+                    print('Saving tmp images...')
+                    save_flag = False
+                    pdb.set_trace()
+                iter_path = os.path.join(args.save_dir, f'M{train_now_idx+1}/iter_img')
+                if not os.path.exists(iter_path): os.mkdir(iter_path)
+                dep_path = os.path.join(iter_path, 'depth')
+                rgb_path = os.path.join(iter_path, 'rgb')
+                if not os.path.exists(dep_path): os.mkdir(dep_path)
+                if not os.path.exists(rgb_path): os.mkdir(rgb_path)
+                try:
+                    now_rgb, now_dep = tensor2img(image_side_rendered), tensor2img(depth_rendered)
+                    cv2.imwrite(f'{rgb_path}/iter_{iteration}.jpg', now_rgb)
+                    cv2.imwrite(f'{dep_path}/iter_{iteration}.jpg', now_dep)
+                except Exception as err:
+                    print(f'errors occurred: {err}')
+                    pdb.set_trace()
 
             # Loss
             # gt_image = viewpoint_cam.original_image.cuda()
@@ -502,9 +526,7 @@ def train_DRGS(
     # save weights: foc[i,j], depth, camera-param
 
     try:
-        M1_path, M2_path = os.path.join(args.save_dir, 'M1'), os.path.join(args.save_dir, 'M2')
-        if not os.path.exists(M1_path): os.mkdir(M1_path)
-        if not os.path.exists(M2_path): os.mkdir(M2_path)
+
         torch.save(foc1_a, os.path.join(args.save_dir, 'foc1_a.pth')) # 直接torch.load即可
         torch.save(foc1_b, os.path.join(args.save_dir, 'foc1_b.pth'))
         torch.save(foc2_a, os.path.join(args.save_dir, 'foc2_a.pth'))
