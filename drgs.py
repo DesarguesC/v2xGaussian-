@@ -262,13 +262,30 @@ def train_DRGS(
     h_, w_ = args.h//8, args.w//8
     meta_valid = torch.ones((h_*6, w_*6)).to('cuda')
     meta[h_:args.h-h_, w_:args.w-w_] = meta_valid
+    meta = meta * torch.randn((args.h, args.w)).to('cuda') # 矩阵形参数-0/1初始
 
     # Calculate a mask ?
     with torch.no_grad():
-        foc1_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
-        foc1_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
-        foc2_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
-        foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
+        # 矩阵形参数-0/1初始*randn
+        # foc1_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
+        # foc1_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
+        # foc2_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
+        # foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
+
+        # 矩阵形参数-0/1初始 & *randn
+        # foc1_a = torch.nn.Parameter((0.5 * torch.randn((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
+        # foc1_b = torch.nn.Parameter((0.5 * torch.ones((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
+        # foc2_a = torch.nn.Parameter((0.5 * torch.randn((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
+        # foc2_b = torch.nn.Parameter((0.5 * torch.ones((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
+
+        # norm initialization - single param
+        foc1_a = torch.nn.Parameter(torch.randn((args.h, args.w)).to('cuda').clone().detach().requires_grad_(True)).cuda()
+        foc1_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda()
+        foc2_a = torch.nn.Parameter(torch.randn((args.h, args.w)).to('cuda').clone().detach().requires_grad_(True)).cuda()
+        foc2_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda()
+
+
+
 
 
     torch.cuda.empty_cache()
@@ -562,6 +579,15 @@ def train_DRGS(
     except Exception as err:
         print(f'err: {err}')
         pdb.set_trace()
+
+
+    # try: # 随机视角
+    #     M = ...
+    #
+    #
+    # except Exception as err:
+    #     print(f'err: {err}')
+    #     pdb.set_trace()
 
 
 

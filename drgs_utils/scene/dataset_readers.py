@@ -965,7 +965,38 @@ class Scene:
             # }
 
 
-# , json_cams, self.gaussian.load_ply,
+    def create_random_cameras(
+            self, dair_item: CooperativeData, dair_info: Dair_v2x_Info,
+            args: ModelParams, side_info: dict=None, resolution_scales=[1.0]
+    ):
+        # cam_infos = [CreateCamera(dair_item, dair_info, side_info, type_) for type_ in [self.type, self.anti_type]]
+        # CameraInfo(uid=str(0 if type == 'inf' else 1) + uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img,
+        #            depth=depth_map,
+        #            depth_weight=depth_weight, image_path=getattr(dair_item, f'{type}_img_path'),
+        #            image_name=uid, width=width, height=height, depthloss=depthloss)
+        try:
+
+            self.random_cameras = {}
+            for scale in resolution_scales:
+                print("Creating Random Cameras")
+                R = (self.train_cameras[scale][0].R + self.test_cameras[scale][0].R) / 2
+                T = (self.train_cameras[scale][0].T + self.test_cameras[scale][0].T) / 2
+                FovY = (self.train_cameras[scale][0].FovY + self.test_cameras[scale][0].FovY) / 2
+                FovX = (self.train_cameras[scale][0].FovX + self.test_cameras[scale][0].FovX) / 2
+                width = (self.train_cameras[scale][0].width + self.test_cameras[scale][0].width) / 2
+                height = (self.train_cameras[scale][0].height + self.test_cameras[scale][0].height) / 2
+                camera = [CameraInfo(
+                    R=R, T=T, FovY=FovY, FovX=FovX,
+                    width=width, height=height
+                )]
+                self.random_cameras[scale] = cameraList_from_camInfos(camera, scale, args)
+
+
+        except Exception as err:
+            print(f'err: {err}')
+            pdb.set_trace()
+
+
 
     def save(self, iteration):
         assert os.path.exists(self.model_path)
@@ -979,6 +1010,9 @@ class Scene:
 
     def getTestCameras(self, scale=1.0):
         return self.test_cameras[scale]
+
+    def getRandomCameras(self, scale=1.0):
+        return self.random_cameras(scale)
 
 
 
