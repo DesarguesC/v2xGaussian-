@@ -264,6 +264,8 @@ def train_DRGS(
     meta[h_:args.h-h_, w_:args.w-w_] = meta_valid
     meta = meta * torch.randn((args.h, args.w)).to('cuda') # 矩阵形参数-0/1初始
 
+    foc1_b = torch.randn((args.h, args.w)).to('cuda')
+    foc2_b = torch.randn((args.h, args.w)).to('cuda')
     # Calculate a mask ?
     with torch.no_grad():
         # 矩阵形参数-0/1初始*randn
@@ -272,17 +274,17 @@ def train_DRGS(
         # foc2_a = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
         # foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
 
-        # 矩阵形参数-0/1初始 & *randn
+        # 矩阵形参数-0/1初始 & *randn             ✅?
         # foc1_a = torch.nn.Parameter((0.5 * torch.randn((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
         # foc1_b = torch.nn.Parameter((0.5 * torch.ones((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
         # foc2_a = torch.nn.Parameter((0.5 * torch.randn((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
         # foc2_b = torch.nn.Parameter((0.5 * torch.ones((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
 
-        # norm initialization - single param
+        # norm initialization - single param    ❎
         foc1_a = torch.nn.Parameter(torch.randn((args.h, args.w)).to('cuda').clone().detach().requires_grad_(True)).cuda()
-        foc1_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda()
+        # foc1_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda() # mainly because this
         foc2_a = torch.nn.Parameter(torch.randn((args.h, args.w)).to('cuda').clone().detach().requires_grad_(True)).cuda()
-        foc2_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda()
+        # foc2_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda() # mainly because this
 
 
 
@@ -308,7 +310,7 @@ def train_DRGS(
             'scene': inf_scene,
             'mask': inf_side_info['mask'], # fg-mask
             'depth': inf_side_info['depth'],
-            'view': inf_view_veh,  # view vehicle pcd from infrastructure side -> update
+            'view': inf_view_veh,  # view vehicle pcd from infrastructure side -> update <depth> TODO: why nan?
             'foc': [foc1_a, foc1_b],
             'name': 'inf'
         },
@@ -318,7 +320,7 @@ def train_DRGS(
             'scene': veh_scene,
             'mask': veh_side_info['mask'], # fg-mask
             'depth': veh_side_info['depth'],
-            'view': veh_view_inf,  # view infrastructure pcd from vehicle side -> update
+            'view': veh_view_inf,  # view infrastructure pcd from vehicle side -> update <depth>
             'foc': [foc2_a, foc2_b],
             'name': 'veh'
         }
@@ -343,6 +345,7 @@ def train_DRGS(
             #     pdb.set_trace()
 
             train_now_idx = randint(0,1) # [0,1]
+            anti_idx = 0 if train_now_idx==1 else 1
             train_now = TrainTargets[train_now_idx]
 
             gaussian = train_now['gaussian']
@@ -422,7 +425,15 @@ def train_DRGS(
                 if save_flag:
                     print('Saving tmp images...')
                     save_flag = False
-                    pdb.set_trace()
+                    pdb.set_trace() # check the shape/device/type of TrainTargets[anti_idx]['view'] FIRST !
+
+                # if iteration % 10 == 0:
+                #     pdb.set_trace()
+                viewpoint_anti = scene.getTrainCameras().copy().pop(randint(0, len(scene.getTrainCameras()) - 1))
+                depth_another_rendered = render(viewpoint_anti, gaussian, pipe, bg)['depth']
+                TrainTargets[anti_idx]['view'] = normalize_depth(depth_another_rendered)
+
+
                 iter_path = os.path.join(args.save_dir, f'M{train_now_idx+1}/iter_img')
                 if not os.path.exists(iter_path): os.mkdir(iter_path)
                 dep_path = os.path.join(iter_path, 'depth')
@@ -450,7 +461,9 @@ def train_DRGS(
                 )
 
 
-            # print(f'[Debug] depth_rendered.shape = {depth_rendered.shape}, fg_mask.shape = {fg_mask.shape}')
+            # pdb.set_trace()
+
+            # print(f'[Debug] depth_rendered.shape = {depth_rendered.shape}, fg_mask.shape = {fg_mask.shape}') !!! deploss = nan ???
             deploss = 0.5 * l2_loss((dep * fg_mask).cuda(), (depth_rendered * fg_mask).cuda()) + 0.5 * l2_loss((dep * bg_mask).cuda(), (depth_rendered * bg_mask).cuda())
             loss = loss + deploss
 
@@ -464,8 +477,12 @@ def train_DRGS(
                 # map_veh = nearMean_map(depth_veh, viewpoint.canny_mask * depth_mask_veh, kernelsize=3)
                 loss = loss + l2_loss(depth_map, depth_rendered * depth_mask) * 1.0 + l2_loss(depth_map, depth_rendered * depth_mask) * 1.0
 
+            # pdb.set_trace()
+
             loss.backward()
             iter_end.record()
+
+
 
 
             with torch.no_grad():

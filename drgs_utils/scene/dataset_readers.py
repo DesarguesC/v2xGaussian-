@@ -921,8 +921,6 @@ class Scene:
         # panoptic_pcd, inf_pcd, veh_pcd = Bind_v2x_pcd(dair_info)
         self.gaussians.create_from_pcd(getattr(dair_info, f'{type}_pcd'), self.cameras_extent)
 
-        # cameraList_from_camInfos
-
         cam_infos = [CreateCamera(dair_item, dair_info, side_info, type_) for type_ in [type, anti_type]]
         train_cam_infos = [cam_infos[0]] if eval else cam_infos # 当前type必然参与训练
         test_cam_infos = [cam_infos[1]] if eval else []
@@ -938,7 +936,7 @@ class Scene:
 
         self.scene_info = scene_info # TODO: for debug
 
-        self.train_cameras, self.test_cameras = {}, {}
+        self.train_cameras, self.test_cameras, self.random_cameras = {}, {}, {}
         # self.train_cameras[]
 
         for scale in resolution_scales:
@@ -964,34 +962,27 @@ class Scene:
             #     f'{anti_type}2{type}': dair_info.inf2veh_matrix if type == 'inf' else np.lialg.inv(dair_info.inf2veh_matrix)
             # }
 
-
-    def create_random_cameras(
-            self, dair_item: CooperativeData, dair_info: Dair_v2x_Info,
-            args: ModelParams, side_info: dict=None, resolution_scales=[1.0]
-    ):
-        # cam_infos = [CreateCamera(dair_item, dair_info, side_info, type_) for type_ in [self.type, self.anti_type]]
-        # CameraInfo(uid=str(0 if type == 'inf' else 1) + uid, R=R, T=T, FovY=FovY, FovX=FovX, image=rgb_img,
-        #            depth=depth_map,
-        #            depth_weight=depth_weight, image_path=getattr(dair_item, f'{type}_img_path'),
-        #            image_name=uid, width=width, height=height, depthloss=depthloss)
         try:
-
-            self.random_cameras = {}
             for scale in resolution_scales:
                 print("Creating Random Cameras")
-                R = (self.train_cameras[scale][0].R + self.test_cameras[scale][0].R) / 2
-                T = (self.train_cameras[scale][0].T + self.test_cameras[scale][0].T) / 2
-                FovY = (self.train_cameras[scale][0].FovY + self.test_cameras[scale][0].FovY) / 2
-                FovX = (self.train_cameras[scale][0].FovX + self.test_cameras[scale][0].FovX) / 2
-                width = (self.train_cameras[scale][0].width + self.test_cameras[scale][0].width) / 2
-                height = (self.train_cameras[scale][0].height + self.test_cameras[scale][0].height) / 2
+                R = (self.train_cameras[scale][0].R + (self.test_cameras[scale][0] if eval else self.train_cameras[scale][1]).R) / 2
+                T = (self.train_cameras[scale][0].T + (self.test_cameras[scale][0] if eval else self.train_cameras[scale][1]).T) / 2
+                FovY = (self.train_cameras[scale][0].FoVy + (self.test_cameras[scale][0] if eval else self.train_cameras[scale][1]).FoVy) / 2
+                FovX = (self.train_cameras[scale][0].FoVx + (self.test_cameras[scale][0] if eval else self.train_cameras[scale][1]).FoVx) / 2
+                width = int((scene_info.train_cameras[0].width + scene_info.train_cameras[1].width) / 2)
+                height = int((scene_info.train_cameras[0].height + scene_info.train_cameras[1].height) / 2)
                 camera = [CameraInfo(
                     R=R, T=T, FovY=FovY, FovX=FovX,
-                    width=width, height=height
+                    width=width, height=height,
+                    uid=None, image=Image.fromarray(np.random.randint(low=0,high=255,size=(height,width,3), dtype=np.uint8)),
+                    image_path=None,image_name='random'
                 )]
-                self.random_cameras[scale] = cameraList_from_camInfos(camera, scale, args)
-
-
+                self.random_cameras[scale] = camera
+                # [Camera(
+                #     R=R, T=T, FoVx=FovX, FoVy=FovY, colmap_id=None,
+                #     image=np.random.randint(low=0,high=255,size=(height,width,3), dtype=np.uint8),
+                #     depth=None, depth_weight=None, gt_alpha_mask=None, image_name='random', uid=None, data_device=args.data_device
+                # )]
         except Exception as err:
             print(f'err: {err}')
             pdb.set_trace()
