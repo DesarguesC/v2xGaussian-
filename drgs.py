@@ -6,6 +6,8 @@ from tqdm import tqdm
 import open3d as o3d
 from random import randint
 from basicsr.utils import tensor2img, img2tensor
+from lidar2dep.data.process import colorize
+from PIL import Image
 
 from drgs_utils.gaussian_renderer import render, network_gui
 from drgs_utils.scene import GaussianModel
@@ -257,15 +259,16 @@ def train_DRGS(
     # 拓展：能以可微的方式优化路端视角 -> 在真实场景中，路端视角和车端视角之间的具体变换关系可能不知道？
 
 
-    meta = torch.zeros((args.h, args.w)).to('cuda')
-    assert args.h%8==0 and args.w%8==0, f'(args.w, args.h) = {(args.w, args.h)}'
-    h_, w_ = args.h//8, args.w//8
-    meta_valid = torch.ones((h_*6, w_*6)).to('cuda')
-    meta[h_:args.h-h_, w_:args.w-w_] = meta_valid
-    meta = meta * torch.randn((args.h, args.w)).to('cuda') # 矩阵形参数-0/1初始
+    # meta = torch.ones((args.h, args.w)).requires_grad_(False).cuda()
+    # assert args.h%8==0 and args.w%8==0, f'(args.w, args.h) = {(args.w, args.h)}'
+    # h_, w_ = args.h//8, args.w//8
+    # meta_valid = torch.nn.Parameter(torch.zeros((h_*6, w_*6))).requires_grad_(True).cuda()
+    # meta[h_:args.h-h_, w_:args.w-w_] = meta_valid
+    # meta = meta * torch.randn((args.h, args.w)).to('cuda') # 矩阵形参数-0/1初始
+    #
+    # foc1_b = torch.zeros((args.h, args.w)).to('cuda')
+    # foc2_b = torch.zeros((args.h, args.w)).to('cuda') # for the init inf_view_veh is BLACK
 
-    foc1_b = torch.randn((args.h, args.w)).to('cuda')
-    foc2_b = torch.randn((args.h, args.w)).to('cuda')
     # Calculate a mask ?
     with torch.no_grad():
         # 矩阵形参数-0/1初始*randn
@@ -275,19 +278,19 @@ def train_DRGS(
         # foc2_b = torch.nn.Parameter((0.5 * meta).clone().detach().requires_grad_(True)).cuda()
 
         # 矩阵形参数-0/1初始 & *randn             ✅?
-        # foc1_a = torch.nn.Parameter((0.5 * torch.randn((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
-        # foc1_b = torch.nn.Parameter((0.5 * torch.ones((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
-        # foc2_a = torch.nn.Parameter((0.5 * torch.randn((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
-        # foc2_b = torch.nn.Parameter((0.5 * torch.ones((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
+        foc1_a = torch.nn.Parameter((0.5 * torch.randn((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
+        foc1_b = torch.nn.Parameter((0.5 * torch.ones((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
+        foc2_a = torch.nn.Parameter((0.5 * torch.randn((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
+        foc2_b = torch.nn.Parameter((0.5 * torch.ones((args.h, args.w)).to('cuda')).clone().detach().requires_grad_(True)).cuda()
 
-        # norm initialization - single param    ❎
-        foc1_a = torch.nn.Parameter(torch.randn((args.h, args.w)).to('cuda').clone().detach().requires_grad_(True)).cuda()
-        # foc1_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda() # mainly because this
-        foc2_a = torch.nn.Parameter(torch.randn((args.h, args.w)).to('cuda').clone().detach().requires_grad_(True)).cuda()
-        # foc2_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda() # mainly because this
-
-
-
+        # norm initialization - single param   ❎
+        # foc1_a = torch.nn.Parameter(torch.randn((args.h, args.w)).to('cuda').clone().detach().requires_grad_(True)).cuda()
+        # # foc1_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda() # mainly because this
+        # foc2_a = torch.nn.Parameter(torch.randn((args.h, args.w)).to('cuda').clone().detach().requires_grad_(True)).cuda()
+        # # foc2_b = torch.nn.Parameter(torch.ones((args.h, args.w)).to('cuda').clone().detach().requires_grad_(False)).cuda() # mainly because this
+        # 只有矩阵中心的方阵才能优化
+        # foc1_a = torch.nn.Parameter(meta).clone().detach().requires_grad_(True).cuda()
+        # foc2_a = torch.nn.Parameter(meta).clone().detach().requires_grad_(True).cuda()
 
 
     torch.cuda.empty_cache()
@@ -310,7 +313,7 @@ def train_DRGS(
             'scene': inf_scene,
             'mask': inf_side_info['mask'], # fg-mask
             'depth': inf_side_info['depth'],
-            'view': inf_view_veh,  # view vehicle pcd from infrastructure side -> update <depth> TODO: why nan?
+            'view': np.asarray(Image.fromarray(colorize(inf_view_veh)).convert('L')),  # view vehicle pcd from infrastructure side -> update <depth> TODO: why nan?
             'foc': [foc1_a, foc1_b],
             'name': 'inf'
         },
@@ -320,7 +323,7 @@ def train_DRGS(
             'scene': veh_scene,
             'mask': veh_side_info['mask'], # fg-mask
             'depth': veh_side_info['depth'],
-            'view': veh_view_inf,  # view infrastructure pcd from vehicle side -> update <depth>
+            'view': np.asarray(Image.fromarray(colorize(inf_view_veh)).convert('L')),  # view infrastructure pcd from vehicle side -> update <depth>
             'foc': [foc2_a, foc2_b],
             'name': 'veh'
         }
@@ -336,224 +339,229 @@ def train_DRGS(
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
     save_flag = True
+    execute_flag = True
+    while execute_flag:
 
-    pdb.set_trace()
-    try:
-
-        for iteration in range(first_iter, opt.iterations + 1):
-            # if iteration >= 3099:
-            #     pdb.set_trace()
-
-            train_now_idx = randint(0,1) # [0,1]
-            anti_idx = 0 if train_now_idx==1 else 1
-            train_now = TrainTargets[train_now_idx]
-
-            gaussian = train_now['gaussian']
-            scene = train_now['scene']
-
-            if 0 in scene.gaussians._xyz.shape:
-                opt.iterations += 1
-                continue
-
-            fg_mask = rearrange(torch.tensor(train_now['mask']), 'h w c -> c h w').requires_grad_(False).cuda()
-
-            with torch.no_grad():
-                bg_mask = 1. - fg_mask
-            dep = rearrange(torch.tensor(train_now['depth']['panoptic'][-1]), 'h w c -> c h w').requires_grad_(False).cuda() # panoptic, uncolored
-            viewer_depth = torch.tensor(train_now['view']).requires_grad_(False).cuda()
-
-            foc = train_now['foc']
-            extra_name = train_now['name']
-
-
-            # 当前结果实时渲染
-            if network_gui.conn == None:
-                network_gui.try_connect()
-
-            while network_gui.conn != None:
-                try:
-                    net_image_bytes = None
-                    custom_cam, do_training, pipe.convert_SHs_python, pipe.compute_cov3D_python, keep_alive, scaling_modifer = network_gui.receive()
-                    if custom_cam != None:
-                        """
-                            这里其实有问题，如果原来对点云做了合并，最终渲染得到的图片应该是更大（或一样）的，但是这里的图片肯定不是
-                        """
-                        net_image = render(custom_cam, gaussian, pipe, background, scaling_modifer)["render"]
-                        # net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
-                        # print(f"[Debug] | net_image.shape = {net_image.shape}, foc.shape = {foc.shape}")
-                        net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
-                    network_gui.send(net_image_bytes, dataset.source_path)
-                    if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
-                        break
-                except Exception as e:
-                    print(f'err: {e}')
-                    network_gui.conn = None
-
-            iter_start.record()
-            gaussian.update_learning_rate(iteration)
-            # Every 1000 its we increase the levels of SH up to a maximum degree
-            if iteration % 1000 == 0:
-                if not (usedepth and iteration >= 2000):
-                    gaussian.oneupSHdegree()
-
-            # Pick a random Camera
-            if not viewpoint_stack:
-                viewpoint_stack = scene.getTrainCameras().copy()
-            viewpoint = viewpoint_stack.pop(randint(0, len(viewpoint_stack) - 1)) # 弹出任意位置的元素(并删除)，非严格的栈结构
-            # TODO: 原始DRGS代码再viewpoint_cam.original_depth和viewpoint_cam.original_iamge处提供了ground truth，我换个地方提供
-
-            # Render
-            # if (iteration - 1) == debug_from:
-            # TODO: debug
-            pipe.debug = True
-
-            bg = torch.rand((3), device="cuda") if opt.random_background else background
-            # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
-
-            render_pkg = render(viewpoint, gaussian, pipe, bg)
-            image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
-
-            # pdb.set_trace()  # Double Check: viewpoint
-            depth_rendered = foc[0] * depth_rendered + foc[1] * viewer_depth
-            depth_rendered = normalize_depth(depth_rendered)
-            # foc * depth_rendered ? foc * viewer_depth ?
-            # TODO: Bind
-            # 如何合并？radii, visibility_filter都是用来控制GS球分裂&合并的，Densification
-            visibility_filter, radii, viewspace_point_tensor = render_pkg["visibility_filter"], render_pkg["radii"], render_pkg['viewspace_points']
-
-            if iteration % 5 == 0:
-                if save_flag:
-                    print('Saving tmp images...')
-                    save_flag = False
-                    pdb.set_trace() # check the shape/device/type of TrainTargets[anti_idx]['view'] FIRST !
-
-                # if iteration % 10 == 0:
-                #     pdb.set_trace()
-                viewpoint_anti = scene.getTrainCameras().copy().pop(randint(0, len(scene.getTrainCameras()) - 1))
-                depth_another_rendered = render(viewpoint_anti, gaussian, pipe, bg)['depth']
-                TrainTargets[anti_idx]['view'] = normalize_depth(depth_another_rendered)
-
-
-                iter_path = os.path.join(args.save_dir, f'M{train_now_idx+1}/iter_img')
-                if not os.path.exists(iter_path): os.mkdir(iter_path)
-                dep_path = os.path.join(iter_path, 'depth')
-                rgb_path = os.path.join(iter_path, 'rgb')
-                if not os.path.exists(dep_path): os.mkdir(dep_path)
-                if not os.path.exists(rgb_path): os.mkdir(rgb_path)
-                try:
-                    now_rgb, now_dep = tensor2img(image_side_rendered), tensor2img(depth_rendered)
-                    cv2.imwrite(f'{rgb_path}/iter_{iteration}.jpg', now_rgb)
-                    cv2.imwrite(f'{dep_path}/iter_{iteration}.jpg', now_dep)
-                except Exception as err:
-                    print(f'errors occurred: {err}')
-                    pdb.set_trace()
-
-            # Loss
-            # gt_image = viewpoint_cam.original_image.cuda()
-            # TODO: rgb的损失要分别传给对应的GS, depth是一起渲染的, 一起传播 | 修改上面这行代码，以及对应到的class下的成员读取
-            gt_image, gt_depth = viewpoint.original_image, viewpoint.original_depth
-            # gt_image_inf, gt_image_veh = ...?
-            Ll1 = l1_loss(gt_image, image_side_rendered)
-
-            loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (
-                       1.0 - ssim(image_side_rendered * fg_mask, gt_image * fg_mask) \
-                       - ssim(image_side_rendered * bg_mask, gt_image * bg_mask)
-                )
-
-
-            # pdb.set_trace()
-
-            # print(f'[Debug] depth_rendered.shape = {depth_rendered.shape}, fg_mask.shape = {fg_mask.shape}') !!! deploss = nan ???
-            deploss = 0.5 * l2_loss((dep * fg_mask).cuda(), (depth_rendered * fg_mask).cuda()) + 0.5 * l2_loss((dep * bg_mask).cuda(), (depth_rendered * bg_mask).cuda())
-            loss = loss + deploss
-
-            # pdb.set_trace()
-            ## depth regularization loss (canny)
-            if usedepthReg and iteration >= 0:
-                depth_mask = (depth_rendered > 0).detach()
-                # depth_mask_inf, depth_mask_veh = (depth_inf > 0).detach(), (depth_veh > 0).detach()
-                # Ori Name: nearDepthMean_map
-                depth_map = nearMean_map(depth_mask, viewpoint.canny_mask * depth_mask, kernelsize=3)
-                # map_veh = nearMean_map(depth_veh, viewpoint.canny_mask * depth_mask_veh, kernelsize=3)
-                loss = loss + l2_loss(depth_map, depth_rendered * depth_mask) * 1.0 + l2_loss(depth_map, depth_rendered * depth_mask) * 1.0
-
-            # pdb.set_trace()
-
-            loss.backward()
-            iter_end.record()
-
-
-
-
-            with torch.no_grad():
-                # Progress bar
-                ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
-                ema_depthloss_for_log = 0.2 * deploss.item() + 0.8 * ema_depthloss_for_log
-                if iteration % 10 == 0:
-                    # pdb.set_trace()
-                    progress_bar.set_postfix(
-                        {"Loss": f"{ema_loss_for_log:.{7}f}", "Deploss": f"{ema_depthloss_for_log:.4f}",
-                         "#pts": gaussian._xyz.shape[0]})
-                    progress_bar.update(10)
-
-                if iteration % 10000 == 0:
-                    # if iteration % 1000 == 0:
-                    #     pdb.set_trace()
-                    if iteration > opt.min_iters and ema_depthloss_for_log > prev_depthloss:
-                        Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
-                                        [iteration], scene, render,
-                                        (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
-                        scene.save(iteration)
-                        print(f"!!! Stop Point: {iteration} !!!")
-                        break
-                    else:
-                        prev_depthloss = ema_depthloss_for_log
-
-                if iteration == opt.iterations:
-                    progress_bar.close()
-
-                # Log and save
-                Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
-                                testing_iterations, scene, render,
-                                (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
-                if (iteration in saving_iterations):
-                    # print("\n[ITER {}] Saving Gaussians".format(iteration))
-                    scene.save(iteration)
-
-                # Densification
-                if iteration < opt.densify_until_iter and ((not usedepth) or gaussian._xyz.shape[0] <= 1500000):
-                    # Keep track of max radii in image-space for pruning
-
-                    # pdb.set_trace()
-
-                    gaussian.max_radii2D[visibility_filter] = torch.max(gaussian.max_radii2D[visibility_filter], radii[visibility_filter])
-                    gaussian.add_densification_stats(viewspace_point_tensor, visibility_filter)
-
-                    if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
-                        size_threshold = 20 if iteration > opt.opacity_reset_interval else None
-                        # camera_extent ?
-                        gaussian.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent,
-                                                    size_threshold)
-
-                    if not usedepth:
-                        if iteration % opt.opacity_reset_interval == 0 or (
-                                dataset.white_background and iteration == opt.densify_from_iter):
-                            gaussian.reset_opacity()
-
-
-                    # Optimizer step
-                    if iteration < opt.iterations:
-                        with torch.no_grad():
-                            gaussian.optimizer.step()
-                            gaussian.optimizer.zero_grad(set_to_none=True)
-
-                    if (iteration in checkpoint_iterations):
-                        print("\n[ITER {}] Saving Checkpoint".format(iteration))
-                        torch.save((gaussian.capture(), iteration), scene.model_path + f"/{extra_name}-chkpnt" + str(iteration) + ".pth")
-
-    except Exception as err:
-        print(f'[Debug] Err: {err}')
         pdb.set_trace()
+        try:
+            execute_flag = False
+            for iteration in range(first_iter, opt.iterations + 1):
+                # if iteration >= 3099:
+                #     pdb.set_trace()
+
+                train_now_idx = randint(0,1) # [0,1]
+                anti_idx = 0 if train_now_idx==1 else 1
+                train_now = TrainTargets[train_now_idx]
+
+                gaussian = train_now['gaussian']
+                scene = train_now['scene']
+
+                if 0 in scene.gaussians._xyz.shape:
+                    opt.iterations += 1
+                    continue
+
+                fg_mask = rearrange(torch.tensor(train_now['mask']), 'h w c -> c h w').requires_grad_(False).cuda()
+
+                with torch.no_grad():
+                    bg_mask = 1. - fg_mask
+                dep = rearrange(torch.tensor(train_now['depth']['panoptic'][-1]), 'h w c -> c h w').requires_grad_(False).cuda() # panoptic, uncolored
+                viewer_depth = torch.tensor(train_now['view']).requires_grad_(False).cuda()
+
+                foc = train_now['foc']
+                extra_name = train_now['name']
+
+
+                # 当前结果实时渲染
+                if network_gui.conn == None:
+                    network_gui.try_connect()
+
+                while network_gui.conn != None:
+                    try:
+                        net_image_bytes = None
+                        custom_cam, do_training, pipe.convert_SHs_python, pipe.compute_cov3D_python, keep_alive, scaling_modifer = network_gui.receive()
+                        if custom_cam != None:
+                            """
+                                这里其实有问题，如果原来对点云做了合并，最终渲染得到的图片应该是更大（或一样）的，但是这里的图片肯定不是
+                            """
+                            net_image = render(custom_cam, gaussian, pipe, background, scaling_modifer)["render"]
+                            # net_image_inf = render(custom_cam, gaussians_inf, pipe, background, scaling_modifer)["render"]
+                            # print(f"[Debug] | net_image.shape = {net_image.shape}, foc.shape = {foc.shape}")
+                            net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
+                        network_gui.send(net_image_bytes, dataset.source_path)
+                        if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
+                            break
+                    except Exception as e:
+                        print(f'err: {e}')
+                        network_gui.conn = None
+
+                iter_start.record()
+                gaussian.update_learning_rate(iteration)
+                # Every 1000 its we increase the levels of SH up to a maximum degree
+                if iteration % 1000 == 0:
+                    if not (usedepth and iteration >= 2000):
+                        gaussian.oneupSHdegree()
+
+                # Pick a random Camera
+                if not viewpoint_stack:
+                    viewpoint_stack = scene.getTrainCameras().copy()
+                stack_idx = randint(0, len(viewpoint_stack) - 1)
+                viewpoint = viewpoint_stack.pop(stack_idx) # 弹出任意位置的元素(并删除)，非严格的栈结构
+                # TODO: 原始DRGS代码再viewpoint_cam.original_depth和viewpoint_cam.original_iamge处提供了ground truth，我换个地方提供
+
+                # Render
+                # if (iteration - 1) == debug_from:
+                # TODO: debug
+                pipe.debug = True
+
+                bg = torch.rand((3), device="cuda") if opt.random_background else background
+                # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
+
+                render_pkg = render(viewpoint, gaussian, pipe, bg)
+                image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
+
+                # pdb.set_trace()  # Double Check: viewpoint
+                depth_rendered = foc[0] * depth_rendered + foc[1] * viewer_depth
+                depth_rendered = torch.tensor(
+                    np.asarray(Image.fromarray(colorize(normalize_depth(depth_rendered))).convert('L')),
+                    dtype=torch.float32, device='cuda'
+                ) # n? tensor?
+                # foc * depth_rendered ? foc * viewer_depth ?
+                # TODO: Bind
+                # 如何合并？radii, visibility_filter都是用来控制GS球分裂&合并的，Densification
+                visibility_filter, radii, viewspace_point_tensor = render_pkg["visibility_filter"], render_pkg["radii"], render_pkg['viewspace_points']
+
+                if iteration % 5 == 0:
+                    if save_flag:
+                        print('Saving tmp images...')
+                        save_flag = False
+                        pdb.set_trace() # check the shape/device/type of TrainTargets[anti_idx]['view'] FIRST !
+
+                    # if iteration % 10 == 0:
+                    #     pdb.set_trace()
+                    viewpoint_anti = scene.getTrainCameras().copy().pop(0 if stack_idx == 1 else 0)
+                    depth_another_rendered = render(viewpoint_anti, gaussian, pipe, bg)['depth']
+                    TrainTargets[anti_idx]['view'] = torch.tensor(
+                        np.asarray(Image.fromarray(colorize(normalize_depth(depth_another_rendered))).convert('L')),
+                        dtype=torch.float32, device='cuda'
+                    )
+
+
+
+                    iter_path = os.path.join(args.save_dir, f'M{train_now_idx+1}/iter_img')
+                    if not os.path.exists(iter_path): os.mkdir(iter_path)
+                    dep_path = os.path.join(iter_path, 'depth')
+                    rgb_path = os.path.join(iter_path, 'rgb')
+                    if not os.path.exists(dep_path): os.mkdir(dep_path)
+                    if not os.path.exists(rgb_path): os.mkdir(rgb_path)
+                    try:
+                        now_rgb, now_dep = tensor2img(image_side_rendered), colorize(tensor2img(depth_rendered))
+                        cv2.imwrite(f'{rgb_path}/iter_{iteration}.jpg', now_rgb)
+                        cv2.imwrite(f'{dep_path}/iter_{iteration}.jpg', now_dep)
+                    except Exception as err:
+                        print(f'errors occurred: {err}')
+                        pdb.set_trace()
+
+                # Loss
+                # gt_image = viewpoint_cam.original_image.cuda()
+                # TODO: rgb的损失要分别传给对应的GS, depth是一起渲染的, 一起传播 | 修改上面这行代码，以及对应到的class下的成员读取
+                gt_image, gt_depth = viewpoint.original_image, viewpoint.original_depth
+                # gt_image_inf, gt_image_veh = ...?
+                Ll1 = l1_loss(gt_image, image_side_rendered)
+
+                loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (
+                           1.0 - ssim(image_side_rendered * fg_mask, gt_image * fg_mask) \
+                           - ssim(image_side_rendered * bg_mask, gt_image * bg_mask)
+                    )
+
+                deploss = 0.5 * l2_loss((dep * fg_mask).cuda(), (depth_rendered * fg_mask).cuda()) + 0.5 * l2_loss((dep * bg_mask).cuda(), (depth_rendered * bg_mask).cuda())
+                loss = loss + deploss
+
+                # pdb.set_trace()
+                # deploss = torch.tensor(0., dtype=torch.float32) # Test: without deploss
+
+                ## depth regularization loss (canny)
+                if usedepthReg and iteration >= 0:
+                    depth_mask = (depth_rendered > 0).detach()
+                    # depth_mask_inf, depth_mask_veh = (depth_inf > 0).detach(), (depth_veh > 0).detach()
+                    # Ori Name: nearDepthMean_map
+                    depth_map = nearMean_map(depth_mask, viewpoint.canny_mask * depth_mask, kernelsize=3)
+                    # map_veh = nearMean_map(depth_veh, viewpoint.canny_mask * depth_mask_veh, kernelsize=3)
+                    loss = loss + l2_loss(depth_map, depth_rendered * depth_mask) * 1.0 + l2_loss(depth_map, depth_rendered * depth_mask) * 1.0
+
+                loss.backward()
+                iter_end.record()
+
+                with torch.no_grad():
+                    # Progress bar
+                    ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
+                    ema_depthloss_for_log = 0.2 * deploss.item() + 0.8 * ema_depthloss_for_log
+                    if iteration % 10 == 0:
+                        # pdb.set_trace()
+                        progress_bar.set_postfix(
+                            {"Loss": f"{ema_loss_for_log:.{7}f}", "Deploss": f"{ema_depthloss_for_log:.4f}",
+                             "#pts": gaussian._xyz.shape[0]})
+                        progress_bar.update(10)
+
+                    if iteration % 1000 == 0:
+                        # if iteration % 1000 == 0:
+                        #     pdb.set_trace()
+                        if iteration > opt.min_iters and ema_depthloss_for_log > prev_depthloss:
+                            Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
+                                            [iteration], scene, render,
+                                            (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
+                            scene.save(iteration)
+                            print(f"!!! Stop Point: {iteration} !!!")
+                            break
+                        else:
+                            prev_depthloss = ema_depthloss_for_log
+
+                    if iteration == opt.iterations:
+                        progress_bar.close()
+
+                    # Log and save
+                    Reporter(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end),
+                                    testing_iterations, scene, render,
+                                    (pipe, background), txt_path=os.path.join(args.model_path, "metric.txt"))
+                    if (iteration in saving_iterations):
+                        # print("\n[ITER {}] Saving Gaussians".format(iteration))
+                        scene.save(iteration)
+
+                    # Densification
+                    if iteration < opt.densify_until_iter and ((not usedepth) or gaussian._xyz.shape[0] <= 1500000):
+                        # Keep track of max radii in image-space for pruning
+
+                        # pdb.set_trace()
+
+                        gaussian.max_radii2D[visibility_filter] = torch.max(gaussian.max_radii2D[visibility_filter], radii[visibility_filter])
+                        gaussian.add_densification_stats(viewspace_point_tensor, visibility_filter)
+
+                        if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
+                            size_threshold = 20 if iteration > opt.opacity_reset_interval else None
+                            # camera_extent ?
+                            gaussian.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent,
+                                                        size_threshold)
+
+                        if not usedepth:
+                            if iteration % opt.opacity_reset_interval == 0 or (
+                                    dataset.white_background and iteration == opt.densify_from_iter):
+                                gaussian.reset_opacity()
+
+
+                        # Optimizer step
+                        if iteration < opt.iterations:
+                            with torch.no_grad():
+                                gaussian.optimizer.step()
+                                gaussian.optimizer.zero_grad(set_to_none=True)
+
+                        if (iteration in checkpoint_iterations):
+                            print("\n[ITER {}] Saving Checkpoint".format(iteration))
+                            torch.save((gaussian.capture(), iteration), scene.model_path + f"/{extra_name}-chkpnt" + str(iteration) + ".pth")
+
+        except Exception as err:
+            print(f'[Debug] Err: {err}')
+            execute_flag = True
+            pdb.set_trace()
+
 
 
     print('\nTraining Process Finished.\n')

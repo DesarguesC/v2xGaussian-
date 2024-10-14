@@ -1,9 +1,8 @@
 # reference: https://github.com/youmi-zym/CompletionFormer/blob/main/src/data/kittidc.py
-import os, json, random, pdb, cv2
+import os, json, random, pdb, cv2, matplotlib
 import open3d as o3d
 import numpy as np
 from . import BaseDataset
-
 from PIL import Image
 import torch
 import torchvision.transforms.functional as TF
@@ -26,6 +25,66 @@ def read_calib_file(filepath):
                 pass
 
     return data
+
+def colorize(value, vmin=None, vmax=None, cmap='gray_r', invalid_val=-99, invalid_mask=None, background_color=(128, 128, 128, 255), gamma_corrected=False, value_transform=None):
+    """Converts a depth map to a color image.
+    This is from --- https://github.com/isl-org/ZoeDepth/blob/main/zoedepth/utils/misc.py
+
+    Args:
+        value (torch.Tensor, numpy.ndarry): Input depth map. Shape: (H, W) or (1, H, W) or (1, 1, H, W). All singular dimensions are squeezed
+        vmin (float, optional): vmin-valued entries are mapped to start color of cmap. If None, value.min() is used. Defaults to None.
+        vmax (float, optional):  vmax-valued entries are mapped to end color of cmap. If None, value.max() is used. Defaults to None.
+        cmap (str, optional): matplotlib colormap to use. Defaults to 'magma_r'.
+        invalid_val (int, optional): Specifies value of invalid pixels that should be colored as 'background_color'. Defaults to -99.
+        invalid_mask (numpy.ndarray, optional): Boolean mask for invalid regions. Defaults to None.
+        background_color (tuple[int], optional): 4-tuple RGB color to give to invalid pixels. Defaults to (128, 128, 128, 255).
+        gamma_corrected (bool, optional): Apply gamma correction to colored image. Defaults to False.
+        value_transform (Callable, optional): Apply transform function to valid pixels before coloring. Defaults to None.
+
+    Returns:
+        numpy.ndarray, dtype - uint8: Colored depth map. Shape: (H, W, 4)
+    """
+
+    if isinstance(value, torch.Tensor):
+        value = value.detach().cpu().numpy()
+
+    value = value.squeeze()
+    if invalid_mask is None:
+        invalid_mask = value == invalid_val
+    mask = np.logical_not(invalid_mask)
+
+    # normalize
+    vmin = np.percentile(value[mask],2) if vmin is None else vmin
+    vmax = np.percentile(value[mask],85) if vmax is None else vmax
+    if vmin != vmax:
+        value = (value - vmin) / (vmax - vmin)  # vmin..vmax
+    else:
+        # Avoid 0-division
+        value = value * 0.
+
+    # squeeze last dim if it exists
+    # grey out the invalid values
+
+    value[invalid_mask] = np.nan
+    cmapper = matplotlib.cm.get_cmap(cmap)
+    if value_transform:
+        value = value_transform(value)
+        # value = value / value.max()
+    value = cmapper(value, bytes=True)  # (nxmx4)
+
+    # img = value[:, :, :]
+    img = value[...]
+    img[invalid_mask] = background_color
+
+    #     return img.transpose((2, 0, 1))
+    if gamma_corrected:
+        # gamma correction
+        img = img / 255
+        img = np.power(img, 2.2)
+        img = img * 255
+        img = img.astype(np.uint8)
+    return img
+
 
 
 def create_former_input(
@@ -135,9 +194,10 @@ def pre_read(
     # pcd_img: [H W], fg_mask: [H W 3]
     M, m  = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255. if M > m else pcd_img
-    if len(depth_image.shape) < 3: depth_image = depth_image[:,:,None]
-
-    colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    if len(depth_image.shape) < 3:
+        depth_image = depth_image[:,:,None]
+        colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+        colored_depth = colorize(depth_image.astype(np.uint8))
     cv2.imwrite(os.path.join(depth_path, f'projected_pcd-{extra_name}.jpg'), cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
 
     print(f'[Debug] before sample: depth_image.shape = {depth_image.shape}')

@@ -30,6 +30,7 @@ from .colmap_loader import read_extrinsics_text, read_intrinsics_text, qvec2rotm
 from drgs_utils import ModelParams
 from ..utils import *
 from lidar2dep.dair import CooperativeData
+from lidar2dep.data.process import colorize
 
 import numpy as np
 import json
@@ -858,11 +859,11 @@ def CreateCamera(
     if not os.path.exists('./debug'): os.mkdir('./debug')
     pred_init = depth_map.squeeze().astype(np.uint8)
     print(f'pred_init.shape = {pred_init.shape}')
-    M, m = np.max(pred_init), np.min(pred_init)
-    if M > m:
-        pred_init = (pred_init - m) / (M - m) * 255.
-
-    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    # M, m = np.max(pred_init), np.min(pred_init)
+    # if M > m:
+    #     pred_init = (pred_init - m) / (M - m) * 255.
+    # colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    colored_init = colorize(pred_init.astype(np.uint8))
     source_path = './debug/sources'
     if not os.path.exists(source_path): os.mkdir(source_path)
 

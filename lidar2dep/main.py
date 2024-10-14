@@ -8,17 +8,15 @@ import pdb
 from einops import repeat, rearrange
 
 import random, os, json, torch
-
+from basicsr.utils import tensor2img, img2tensor
 from torch import nn
 from torch.nn.functional import interpolate as Inter
 torch.autograd.set_detect_anomaly(True)
-
 from model.completionformer import CompletionFormer
+from lidar2dep.data.process import colorize
 
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-
-
 
 def check_args(args):
     new_args = args
@@ -156,17 +154,19 @@ def main():
 
     pred_init = out['pred_init'].squeeze()
     pred_init = pred_init.detach().cpu().numpy().astype(np.uint8)
-    M, m = np.max(pred_init), np.min(pred_init)
-    pred_init = (pred_init - m) / (M - m) * 255.
-    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    colored_init = colorize(pred_init)
+    # M, m = np.max(pred_init), np.min(pred_init)
+    # pred_init = (pred_init - m) / (M - m) * 255.
+    # colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
     print(colored_init)
-    cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_init.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
+    # cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_init.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(os.path.join(opt.depth_path, 'colored_pred_init.jpg'), colorize(colored_init))
 
 
 def Args2Results(
         opt, rgb_file = None, pcd_file_path = None,
         intrinsics = None, extrinsics = None, CompletionModel = None,
-        fg_mask=None, new_path=True, extra_name='fg'
+        fg_mask=None, new_path=True, extra_name='fg', depth_estimater=None
     ):
 
     I_dict = pre_read(
@@ -198,22 +198,33 @@ def Args2Results(
     # TODO -> Currently: carved_image & pcd_depth
     # TODO -> Compared with: carved_image & (1-fg_mask)*pcd_depth
     sample = {
-        'rgb': rgb.cuda(),  # torch.Tensor[1, 3, H, W]
+        'rgb': torch.tensor(rgb, dtype=torch.float32).cuda(),  # torch.Tensor[1, 3, H, W]
         'dep': depth.cuda()  # torch.Tensor[1, 1, H, W]
     }
 
-    out = net(sample)
+    if depth_estimater is not None:
+        try:
+            depth = depth_estimater(Image.fromarray(tensor2img(rgb)))['depth']
+            sample['dep'] = torch.tensor(np.asarray(depth.convert('L')), dtype=torch.float32)[None,None,:,:].to('cuda')
+            print(f'[Debug] After ZoeDepth: depth.size = {depth.size}') # depth -> PIL.Image
+
+        except Exception as err:
+            print(f'err: {err}')
+            pdb.set_trace()
+
     # use: pdb
     # TODO: check data format
-
+    out = net(sample)
     print(out)
-    pred = out['pred'].squeeze()  # [1 1 H W]
+    pred = out['pred'].squeeze()  # [1 1 H W] -> [H W]
     pred = pred.detach().cpu().numpy().astype(np.uint8)
-    M, m = np.max(pred), np.min(pred)
-    pred = (pred - m) / (M - m) * 255.
-    colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    # M, m = np.max(pred), np.min(pred)
+    # pred = (pred - m) / (M - m) * 255.
+    # colored_pred = cv2.applyColorMap(pred.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    #
+    # pred = repeat(pred[:,:,None].astype(np.uint8), 'h w 1 -> h w c', c=3)
+    colored_pred = colorize(pred)
 
-    pred = repeat(pred[:,:,None].astype(np.uint8), 'h w 1 -> h w c', c=3)
     print(f'pred.shape = {pred.shape}')
     # depth writing paths
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'pred_depth-{extra_name}.jpg'), cv2.cvtColor(pred, cv2.COLOR_RGB2BGR))
@@ -221,10 +232,7 @@ def Args2Results(
 
     pred_init = out['pred_init'].squeeze()
     pred_init = pred_init.detach().cpu().numpy().astype(np.uint8)
-    M, m = np.max(pred_init), np.min(pred_init)
-    if M > m:
-        pred_init = (pred_init - m) / (M - m) * 255.
-    colored_init = cv2.applyColorMap(pred_init.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    colored_init = colorize(pred_init.astype(np.uint8))
     print(colored_init)
     cv2.imwrite(os.path.join(opt.depth_path if new_path else opt.results, f'colored_pred_init-{extra_name}.jpg'), cv2.cvtColor(colored_init, cv2.COLOR_RGB2BGR))
 
@@ -258,7 +266,8 @@ def Direct_Renderring(pcd_file, depth_path: str, extra_name: str, cam_intrinsics
     M, m = np.max(pcd_img), np.min(pcd_img)
     depth_image = (pcd_img - m) / (M - m) * 255.
 
-    colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    # colored_depth = cv2.applyColorMap(depth_image.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+    colored_depth = colorize(depth_image.astype(np.uint8))
     cv2.imwrite(os.path.join(depth_path, f'projected_pcd-{extra_name}.jpg'),
                 cv2.cvtColor(colored_depth, cv2.COLOR_RGB2BGR))
 

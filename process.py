@@ -4,11 +4,13 @@ import open3d as o3d
 from PIL import Image
 from cam_utils import downsampler, list_downsampler
 from lidar2dep.config import Get_Merged_Args, get_args_parser
-from lidar2dep.main import Args2Results, Direct_Renderring
+from lidar2dep.main import Args2Results, Direct_Renderring,colorize
 from seem.utils.constants import COCO_PANOPTIC_CLASSES
 from seem.masks import FG_remove, FG_remove_All, preload_seem_detector, preload_lama_remover
 from lidar2dep.dair import DAIR_V2X_C, CooperativeData
 from lidar2dep.main import get_CompletionFormer
+from transformers import pipeline
+
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -113,7 +115,8 @@ def process_first(
         print('[INFO] Loading CompletionFormer...')
         CompletionModel = get_CompletionFormer(opt)
 
-    # pdb.set_trace()
+        # monocular depth estimation with ZoeDepth
+        ZoeDepth = pipeline(task="depth-estimation", model="../Intel/zoedepth-kitti")
 
     files = [
         {
@@ -235,7 +238,7 @@ def process_first(
                 opt, rgb_file=carved_image, pcd_file_path=pcd_file,
                 intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
                 CompletionModel = CompletionModel,
-                fg_mask=mask, new_path=False, extra_name=f'{extra_name}-bg'
+                fg_mask=mask, new_path=False, extra_name=f'{extra_name}-bg', depth_estimater=ZoeDepth
             )
         # ForeGround
         # colored_pred_fg, colored_init_fg, pred_fg = \
@@ -246,7 +249,7 @@ def process_first(
                 opt, rgb_file=carved_image_fg, pcd_file_path=pcd_file,
                 intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
                 CompletionModel=CompletionModel,
-                fg_mask=1.-mask, new_path=False, extra_name=f'{extra_name}-fg'
+                fg_mask=1.-mask, new_path=False, extra_name=f'{extra_name}-fg', depth_estimater=ZoeDepth
             )
         #   前景使用lama填充背景
 
@@ -256,7 +259,7 @@ def process_first(
                 opt, rgb_file=np.array(image), pcd_file_path=pcd_file,
                 intrinsics=camera['intrinsic'], extrinsics=camera['extrinsic'],
                 CompletionModel=CompletionModel,
-                fg_mask=None, new_path=False, extra_name=f'{extra_name}-panoptic'
+                fg_mask=None, new_path=False, extra_name=f'{extra_name}-panoptic', depth_estimater=ZoeDepth
             )
         # 不分前背景
         print(colored_pred_bg, colored_pred_fg)
