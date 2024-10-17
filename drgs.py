@@ -372,7 +372,7 @@ def train_DRGS(
                 anti_gaussian = TrainTargets[anti_idx]['gaussian']
                 scene = train_now['scene']
 
-                shape_curve[str(train_now_idx)] = shape_curve[str(train_now_idx)].append[gaussian._xyz.shape[0]]
+                shape_curve[str(train_now_idx)].append(gaussian._xyz.shape[0])
 
                 if 0 in scene.gaussians._xyz.shape:
                     opt.iterations += 1
@@ -427,22 +427,21 @@ def train_DRGS(
                 # TODO: 原始DRGS代码再viewpoint_cam.original_depth和viewpoint_cam.original_iamge处提供了ground truth，我换个地方提供
                 viewpoint_anti = scene.getTrainCameras().copy().pop(0 if stack_idx == 1 else 0)
                 render_pkg_anti = render(viewpoint_anti, anti_gaussian, pipe, bg)
+                # TODO: 这里不应该用viewpoint_anti渲染的，应该是当前相机位置看两个GS用来叠加，但是loss降得还行 (-> 18xxx)
                 image_anti, depth_another_rendered = render_pkg_anti['render'], render_pkg_anti['depth']
                 TrainTargets[anti_idx]['view'] = torch.tensor(
                     np.asarray(Image.fromarray(colorize(normalize_depth(depth_another_rendered))).convert('L')),
                     dtype=torch.float32, device='cuda'
                 )
-                # TODO: debug
                 pipe.debug = True
-
                 # depth存在render_pkg里，如果有其他要计算的也可以封装到这里，render_pkg['depth']访问深度
 
                 render_pkg = render(viewpoint, gaussian, pipe, bg)
                 image_side_rendered, depth_rendered = render_pkg["render"], render_pkg['depth']
-                if iteration >= 1.5 * render_threshold:
+                if int(iteration // (1.5 * render_threshold)) % 2 == 1:
                     image_side_rendered = foc[1] * image_side_rendered + (1. - foc[1]) * image_anti
 
-                depth_rendered = foc[0] * depth_rendered + (1. - foc[0]) * (viewer_depth if iteration < 0.5 * render_threshold else depth_another_rendered)
+                depth_rendered = foc[0] * depth_rendered + (1. - foc[0]) * (viewer_depth if int(iteration // (0.5 * render_threshold)) % 2 == 0 else depth_another_rendered)
                 depth_rendered = torch.tensor(
                     np.asarray(Image.fromarray(colorize(normalize_depth(depth_rendered))).convert('L')),
                     dtype=torch.float32, device='cuda'
@@ -479,6 +478,15 @@ def train_DRGS(
                     )
 
                 deploss = 0.5 * l2_loss((dep * fg_mask).cuda(), (depth_rendered * fg_mask).cuda()) + 0.5 * l2_loss((dep * bg_mask).cuda(), (depth_rendered * bg_mask).cuda())
+
+
+
+                if iteration % 1000 == 0:
+                    print('set break point for DEBUG')
+                    pdb.set_trace()
+                    # TODO: check real RGB loss
+
+
                 loss = loss + 1./256. * deploss
 
                 loss.backward()
