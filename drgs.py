@@ -358,12 +358,16 @@ def train_DRGS(
     first_iter += 1
     save_flag = True
     execute_flag = True
+
+    iteration = first_iter
     while execute_flag:
 
         pdb.set_trace()
         try:
             execute_flag = False
-            for iteration in range(first_iter, opt.iterations + 1):
+
+            while iteration >= first_iter and iteration <= opt.iterations:
+                iteration += 1
 
                 train_now_idx = randint(0,1) # [0,1]
                 anti_idx = 0 if train_now_idx==1 else 1
@@ -425,8 +429,8 @@ def train_DRGS(
                 stack_idx = randint(0, len(viewpoint_stack) - 1)
                 viewpoint = viewpoint_stack.pop(stack_idx) # 弹出任意位置的元素(并删除)，非严格的栈结构
                 # TODO: 原始DRGS代码再viewpoint_cam.original_depth和viewpoint_cam.original_iamge处提供了ground truth，我换个地方提供
-                viewpoint_anti = scene.getTrainCameras().copy().pop(0 if stack_idx == 1 else 0)
-                render_pkg_anti = render(viewpoint_anti, anti_gaussian, pipe, bg)
+                # viewpoint_anti = scene.getTrainCameras().copy().pop(0 if stack_idx == 1 else 0)
+                render_pkg_anti = render(viewpoint, anti_gaussian, pipe, bg)
                 # TODO: 这里不应该用viewpoint_anti渲染的，应该是当前相机位置看两个GS用来叠加，但是loss降得还行 (-> 18xxx)
                 image_anti, depth_another_rendered = render_pkg_anti['render'], render_pkg_anti['depth']
                 TrainTargets[anti_idx]['view'] = torch.tensor(
