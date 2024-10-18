@@ -8,7 +8,7 @@ import torchvision.transforms as T
 from PIL import Image
 from typing import Optional
 from pathlib import Path
-from datasets.data import  pil_loader
+from flash3d.datasets.data import  pil_loader
 
 
 # This could also be retrieved from

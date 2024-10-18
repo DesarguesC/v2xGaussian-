@@ -7,10 +7,10 @@ import numpy as np
 from imageio.v3 import imwrite, imread
 import cv2
 
-from datasets.colmap_database import COLMAPDatabase
-from datasets.colmap_utils import rotmat2qvec, read_model
-from datasets.colmap_misc import is_computed
-from datasets.nyu.camera import camera_params, make_K
+from flash3d.datasets.colmap_database import COLMAPDatabase
+from flash3d.datasets.colmap_utils import rotmat2qvec, read_model
+from flash3d.datasets.colmap_misc import is_computed
+from flash3d.datasets.nyu.camera import camera_params, make_K
 from slurm import p40_executor
 
 

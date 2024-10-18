@@ -11,10 +11,10 @@ import torchvision.transforms as TT
 import torchvision.transforms.functional as TTF
 from tqdm import tqdm
 
-from datasets.nyu.camera import camera_params, make_K
-from datasets.data import pil_loader
-from datasets.colmap_utils import read_cameras_binary
-from datasets.colmap_misc import\
+from flash3d.datasets.nyu.camera import camera_params, make_K
+from flash3d.datasets.data import pil_loader
+from flash3d.datasets.colmap_utils import read_cameras_binary
+from flash3d.datasets.colmap_misc import\
     read_colmap_pose, \
     load_sparse_pcl_colmap, \
     get_sparse_depth

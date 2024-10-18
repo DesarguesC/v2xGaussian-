@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from datasets.colmap_utils import \
+from flash3d.datasets.colmap_utils import \
     read_images_binary, \
     read_points3d_binary, \
     read_model, \

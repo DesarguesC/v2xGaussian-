@@ -9,6 +9,8 @@ from basicsr.utils import tensor2img, img2tensor
 from lidar2dep.data.process import colorize
 from PIL import Image
 
+import flash3d
+
 from drgs_utils.gaussian_renderer import render, network_gui
 from drgs_utils.scene import GaussianModel
 from drgs_utils.utils.loss_utils import l1_loss, l2_loss, nearMean_map, ssim

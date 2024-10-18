@@ -11,11 +11,11 @@ import torch.nn.functional as F
 from PIL import Image
 from typing import Optional
 from pathlib import Path
-from datasets.tardataset import TarDataset
+from flash3d.datasets.tardataset import TarDataset
 
-from datasets.data import process_projs, data_to_c2w, pil_loader, get_sparse_depth
-from misc.depth import estimate_depth_scale_ransac
-from misc.localstorage import copy_to_local_storage, extract_tar, get_local_dir
+from flash3d.datasets.data import process_projs, data_to_c2w, pil_loader, get_sparse_depth
+from flash3d.misc.depth import estimate_depth_scale_ransac
+from flash3d.misc.localstorage import copy_to_local_storage, extract_tar, get_local_dir
 
 
 def load_seq_data(data_path, split):

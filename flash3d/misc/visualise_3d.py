@@ -9,8 +9,8 @@ from plyfile import PlyData, PlyElement
 from torch import Tensor
 from scipy.spatial.transform import Rotation as R
 
-from misc.depth import normalize_depth_for_display
-from models.encoder.layers import Project3DSimple
+from flash3d.misc.depth import normalize_depth_for_display
+from flash3d.models.encoder.layers import Project3DSimple
 
 
 def depth_to_img(d):

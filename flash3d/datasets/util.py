@@ -3,9 +3,9 @@ import logging
 from torch.utils.data import DataLoader
 
 from packaging.version import Version
-from datasets.re10k import Re10KDataset
-from datasets.nyu.dataset import NYUv2Dataset
-from datasets.kitti import KITTIDataset
+from flash3d.datasets.re10k import Re10KDataset
+from flash3d.datasets.nyu.dataset import NYUv2Dataset
+from flash3d.datasets.kitti import KITTIDataset
 
 def create_datasets(cfg, split="val"):
     datasets_dict = {

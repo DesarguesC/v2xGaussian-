@@ -4,7 +4,7 @@ import pickle
 import argparse
 from tqdm import tqdm
 
-from datasets.re10k import load_seq_data
+from flash3d.datasets.re10k import load_seq_data
 
 
 def main():
