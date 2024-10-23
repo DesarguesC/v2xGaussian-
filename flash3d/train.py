@@ -76,16 +76,20 @@ def run_epoch(fabric,
         lr_scheduler.step()
 
 @hydra.main(
-    config_path="configs",
+    config_path="flash3d/configs",
     config_name="config",
     version_base=None
 )
-def main(cfg: DictConfig):
-    hydra_cfg = HydraConfig.get()
+def main(opt, cfg: DictConfig):
+    hydra_cfg = HydraConfig.get() # get config at "{config_path}/{config_name}"
     # set up the output directory
-    output_dir = hydra_cfg['runtime']['output_dir']
+    if not os.path.exists(opt.save_dir): os.mkdir(opt.save_dir)
+    output_dir = os.path.join(opt.save_dir, 'flash3d') # temporary output of Flash3D
+
+    ori_dir = os.system('pwd')
     os.chdir(output_dir)
-    logging.info(f"Working dir: {output_dir}")
+
+    logging.info(f"Saving dir: {output_dir} | Flash3D Working dir: {output_dir}")
     # set up random set
     torch.set_float32_matmul_precision('high')
     seed_everything(cfg.run.random_seed)

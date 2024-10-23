@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from einops import rearrange
-from models.encoder.resnet_encoder import ResnetEncoder
-from models.decoder.resnet_decoder import ResnetDecoder, ResnetDepthDecoder
+from flash3d.models.encoder.resnet_encoder import ResnetEncoder
+from flash3d.models.decoder.resnet_decoder import ResnetDecoder, ResnetDepthDecoder
 
 class UniDepthExtended(nn.Module):
     def __init__(self, cfg):

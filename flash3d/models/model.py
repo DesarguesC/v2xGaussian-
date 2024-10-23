@@ -6,10 +6,10 @@ import torch.nn as nn
 from pathlib import Path
 from einops import rearrange
 
-from models.encoder.layers import BackprojectDepth
-from models.decoder.gauss_util import focal2fov, getProjectionMatrix, K_to_NDC_pp, render_predicted
-from misc.util import add_source_frame_id
-from misc.depth import estimate_depth_scale, estimate_depth_scale_ransac
+from flash3d.models.encoder.layers import BackprojectDepth
+from flash3d.models.decoder.gauss_util import focal2fov, getProjectionMatrix, K_to_NDC_pp, render_predicted
+from flash3d.misc.util import add_source_frame_id
+from flash3d.misc.depth import estimate_depth_scale, estimate_depth_scale_ransac
 
 def default_param_group(model):
     return [{'params': model.parameters()}]
@@ -35,7 +35,7 @@ class GaussianPredictor(nn.Module):
 
         # define the model
         if "unidepth" in cfg.model.name:
-            from models.encoder.unidepth_encoder import UniDepthExtended
+            from flash3d.models.encoder.unidepth_encoder import UniDepthExtended
             models["unidepth_extended"] = UniDepthExtended(cfg)
             self.parameters_to_train += models["unidepth_extended"].get_parameter_groups()
 
