@@ -18,6 +18,7 @@ memory_test.txt
 
 
 submodules/diff-gaussian-rasterization/
+submodules/diff-gaussian-rasterization-w-pose/
 *.dump
 *.csv
 planner-curve.jpg
