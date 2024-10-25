@@ -59,7 +59,7 @@ def evaluate(model, cfg, evaluator, input_image, device=None, save_vis=False):
     with torch.no_grad():
         if device is not None:
             to_device(inputs, device)
-        inputs["target_frame_ids"] = target_frame_ids
+        # inputs["target_frame_ids"] = target_frame_ids
         outputs = model(inputs) # dict
 
     for f_id in score_dict.keys():
@@ -128,7 +128,7 @@ def main(opt, cfg: DictConfig):
 
     split = "test"
     save_vis = cfg.eval.save_vis
-    dataset, dataloader = create_datasets(cfg, split=split)
+    dataset, dataloader = inference(opt.input_img) #  create_datasets(cfg, split=split)
     score_dict_by_name = evaluate(model, cfg, evaluator, dataloader, 
                                   device=device, save_vis=save_vis)
     print(json.dumps(score_dict_by_name, indent=4))
