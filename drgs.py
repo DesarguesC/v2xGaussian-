@@ -8,6 +8,7 @@ from random import randint
 from basicsr.utils import tensor2img, img2tensor
 from lidar2dep.data.process import colorize
 from PIL import Image
+from flash3d.evaluate import v2x_inference
 
 import flash3d
 
@@ -326,6 +327,20 @@ def train_DRGS(
 
     render_threshold = 1000
 
+    debug_flag = True
+    while debug_flag:
+        debug_flag = False
+        try:
+            score_dict_inf, gaussian_outputs_inf = v2x_inference(opt, dair_info, view_type='inf', save_result=True, return_GS=True)
+            score_dict_veh, gaussian_outputs_veh = v2x_inference(opt, dair_info, view_type='veh', save_result=True, return_GS=True)
+            # net_image = render(custom_cam, gaussian, pipe, background, scaling_modifer)["render"]
+            # TODO: 先用Flash3D进行推理 | 用Flash3D产生的GS结果作初始？
+        except Exception as err:
+            print(f'err = {err}')
+            debug_flag = True
+            pdb.set_trace()
+
+
     TrainTargets = [
         # 0 -> infrastructure side
         {
@@ -362,6 +377,9 @@ def train_DRGS(
     execute_flag = True
 
     iteration = first_iter
+
+
+
     while execute_flag:
 
         pdb.set_trace()

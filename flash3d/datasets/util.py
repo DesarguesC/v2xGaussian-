@@ -6,15 +6,16 @@ from packaging.version import Version
 from flash3d.datasets.re10k import Re10KDataset
 from flash3d.datasets.nyu.dataset import NYUv2Dataset
 from flash3d.datasets.kitti import KITTIDataset
+from flash3d.datasets.infer import InferenceV2X
 
-def create_datasets(cfg, split="val"):
+def create_datasets(cfg, split="val", type='ori'):
     datasets_dict = {
         "re10k": Re10KDataset,
         "nyuv2": NYUv2Dataset,
         "kitti": KITTIDataset,
-    }[cfg.dataset.name]
+    }[cfg.dataset.name] if type=='ori' else InferenceV2X
 
-    dataset = datasets_dict(cfg, split=split)
+    dataset = datasets_dict(cfg, split=split) # add class: inference
     logging.info("There are {:d} {} items\n".format(len(dataset), split)
     )
     shuffle = True if split == "train" else False

@@ -13,7 +13,7 @@ class UniDepthExtended(nn.Module):
         self.cfg = cfg
         # hf repo_id: lpiccinelli/unidepth-v1-vitl14
         self.unidepth = torch.hub.load(
-            "../../../../../lpiccinelli-eth/UniDepth", "UniDepth", version=cfg.model.depth.version,
+            "../../../../../lpiccinelli-eth/unidepth", "UniDepth", version=cfg.model.depth.version,
             backbone=cfg.model.depth.backbone, pretrained=True, trust_repo=True, 
             force_reload=True
         )
