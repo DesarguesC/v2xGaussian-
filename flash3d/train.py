@@ -1,16 +1,16 @@
-import os
+import os, pdb
 import time
 import logging
 import torch
 import hydra
 import torch.optim as optim
-
-from ema_pytorch import EMA
+pdb.set_trace()
+# from ema_pytorch import EMA
 from omegaconf import DictConfig
 from hydra.core.hydra_config import HydraConfig
 from pytorch_lightning import seed_everything
-from lightning.fabric import Fabric
-from lightning.fabric.strategies import DDPStrategy
+# from lightning.fabric import Fabric
+# from lightning.fabric.strategies import DDPStrategy
 
 from misc.logger import setup_logger
 from evaluation.evaluator import Evaluator

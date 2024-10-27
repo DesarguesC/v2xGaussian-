@@ -10,13 +10,14 @@ from omegaconf import DictConfig
 from hydra.core.hydra_config import HydraConfig
 from matplotlib import pyplot as plt
 import torchvision.transforms.functional as TF
-
 from flash3d.models.model import GaussianPredictor, to_device
 from evaluation.evaluator import Evaluator
-from datasets.util import create_datasets
+from datasets.util import create_datasets # socket
+pdb.set_trace()
 from misc.util import add_source_frame_id
 from misc.visualise_3d import save_ply
 from flash3d.datasets.infer import InferenceV2X
+
 
 
 def get_model_instance(model):

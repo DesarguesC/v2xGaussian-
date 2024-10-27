@@ -12,8 +12,8 @@ from torchvision import transforms
 from detectron2.structures import BitMasks, Boxes, Instances
 from detectron2.data import MetadataCatalog, Metadata
 
-from utils import prompt_engineering
-from modeling.utils import configurable, PASCAL_CLASSES
+from seem.utils import prompt_engineering
+from seem.modeling.utils import configurable, PASCAL_CLASSES
 from ..visual_sampler import build_shape_sampler
 
 __all__ = ["PascalVOCSegDatasetMapperIX"]

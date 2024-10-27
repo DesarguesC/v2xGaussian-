@@ -18,10 +18,10 @@ from detectron2.data.datasets.builtin_meta import COCO_CATEGORIES
 from detectron2.data import MetadataCatalog
 from pycocotools import mask as coco_mask
 
-from utils import prompt_engineering
-from modeling.language import build_tokenizer
-from modeling.language.misc import text_noun_with_prompt_all
-from modeling.utils import configurable
+from seem.utils import prompt_engineering
+from seem.modeling.language import build_tokenizer
+from seem.modeling.language.misc import text_noun_with_prompt_all
+from seem.modeling.utils import configurable
 
 from ..visual_sampler.sampler import build_shape_sampler
 

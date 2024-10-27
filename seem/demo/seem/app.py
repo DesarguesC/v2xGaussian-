@@ -19,11 +19,11 @@ import whisper
 import numpy as np
 
 from gradio import processing_utils
-from ...modeling.BaseModel import BaseModel
-from ...modeling import build_model
-from ...utils.distributed import init_distributed
-from ...utils.arguments import load_opt_from_config_files
-from ...utils.constants import COCO_PANOPTIC_CLASSES
+from seem.modeling.BaseModel import BaseModel
+from seem.modeling import build_model
+from seem.utils.distributed import init_distributed
+from seem.utils.arguments import load_opt_from_config_files
+from seem.utils.constants import COCO_PANOPTIC_CLASSES
 
 from ..seem.tasks import *
 

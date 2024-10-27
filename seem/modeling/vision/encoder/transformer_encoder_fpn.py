@@ -14,8 +14,8 @@ from detectron2.layers import Conv2d, DeformConv, ShapeSpec, get_norm
 
 from .build import register_encoder
 from .transformer_blocks import TransformerEncoder, TransformerEncoderLayer, _get_clones, _get_activation_fn
-from ...modules import PositionEmbeddingSine
-from ...utils import configurable
+from seem.modules import PositionEmbeddingSine
+from seem.utils import configurable
 
 
 # This is a modified FPN decoder.

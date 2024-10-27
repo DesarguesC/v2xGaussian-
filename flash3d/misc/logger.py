@@ -6,7 +6,7 @@ from omegaconf import OmegaConf
 import neptune as neptune
 from neptune.utils import stringify_unsupported
 
-from flash3d.misc.neptune_token import NEPTUNE_API_TOKEN, USER_NAME, PROJECT_NAME
+# from flash3d.misc.neptune_token import NEPTUNE_API_TOKEN, USER_NAME, PROJECT_NAME
 
 
 def get_all_keys(d):

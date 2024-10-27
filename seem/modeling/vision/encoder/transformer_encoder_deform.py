@@ -16,8 +16,8 @@ from detectron2.modeling import SEM_SEG_HEADS_REGISTRY
 from .ops.modules import MSDeformAttn
 from .build import register_encoder
 from .transformer_blocks import _get_clones, _get_activation_fn
-from ...utils import configurable
-from ...modules import PositionEmbeddingSine
+from seem.utils import configurable
+from seem.modules import PositionEmbeddingSine
 
 
 # MSDeformAttn Transformer encoder in deformable detr

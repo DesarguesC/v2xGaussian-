@@ -10,8 +10,6 @@ from lidar2dep.data.process import colorize
 from PIL import Image
 from flash3d.evaluate import v2x_inference
 
-import flash3d
-
 from drgs_utils.gaussian_renderer import render, network_gui
 from drgs_utils.scene import GaussianModel
 from drgs_utils.utils.loss_utils import l1_loss, l2_loss, nearMean_map, ssim
@@ -326,7 +324,7 @@ def train_DRGS(
     iter_end = torch.cuda.Event(enable_timing=True)
 
     render_threshold = 1000
-
+    pdb.set_trace()
     debug_flag = True
     while debug_flag:
         debug_flag = False
