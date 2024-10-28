@@ -10,10 +10,10 @@ Packages from GitHub
 ```bash
 pip install git+https://github.com/NVlabs/nvdiffrast/ && \
 pip install git+https://github.com/ashawkey/kiuikit.git && \
-pip install git+https://github.com/bytedance/MVDream
+pip install git+https://github.com/bytedance/MVDream && \
 pip install git+https://github.com/bytedance/ImageDream/#subdirectory=extern/ImageDream && \
 pip install git+https://github.com/MaureenZOU/detectron2-xyz.git && \
-pip install -e git+https://github.com/DesarguesC/kornia@master#egg=kornia && \
+pip install git+https://github.com/DesarguesC/kornia@master#egg=kornia && \
 pip install git+https://github.com/facebookresearch/pytorch3d.git
 ```
 
