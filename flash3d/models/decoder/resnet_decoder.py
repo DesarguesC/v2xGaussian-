@@ -3,8 +3,8 @@ import numpy as np
 from einops import rearrange
 from collections import OrderedDict
 
-from models.encoder.layers import *
-from models.decoder.gaussian_decoder import get_splits_and_inits, GaussianDecoder
+from flash3d.models.encoder.layers import *
+from flash3d.models.decoder.gaussian_decoder import get_splits_and_inits, GaussianDecoder
 
 
 class ResnetDecoder(nn.Module):

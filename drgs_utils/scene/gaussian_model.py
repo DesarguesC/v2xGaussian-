@@ -130,7 +130,7 @@ class GaussianModel:
         if 0 in colors.shape:
             colors = torch.tensor(np.random.rand(fused_point_cloud.shape[0], 3)).float().cuda()
             # TODO: 看有没有其他染色方法
-        fused_color = RGB2SH(torch.tensor(colors).float().cuda())
+        fused_color = RGB2SH(colors.clone().detach().requires_grad_(True).float().cuda())
 
         print('Dealing with SHS...')
         features = torch.zeros((fused_color.shape[0], 3, (self.max_sh_degree + 1) ** 2)).float().cuda()

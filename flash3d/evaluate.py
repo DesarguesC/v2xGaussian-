@@ -11,11 +11,8 @@ from hydra.core.hydra_config import HydraConfig
 from matplotlib import pyplot as plt
 import torchvision.transforms.functional as TF
 from flash3d.models.model import GaussianPredictor, to_device
-pdb.set_trace()
 from evaluation.evaluator import Evaluator
-from .datasets.util import create_datasets # stuck ?
-pdb.set_trace()
-# from misc.util import add_source_frame_id
+from flash3d.datasets.util import create_datasets # stuck ?
 from misc.visualise_3d import save_ply
 from flash3d.datasets.infer import InferenceV2X
 
@@ -114,20 +111,13 @@ def evaluate(opt, model, cfg, evaluator, dair_info, view_type='inf', device=None
     return (score_dict_by_name, outputs) if return_GS else score_dict_by_name
 
 
-@hydra.main(
-    config_path="configs",
-    config_name="config",
-    version_base=None
-)
 def v2x_inference(opt, dair_info, cfg: DictConfig, view_type: str = 'inf', save_result=True, return_GS=True):
-    # cfg: for Gaussian Splatting loading...
-    pdb.set_trace() # check "cfg: DictConfig"
-
 
     assert view_type in ['inf', 'veh'], view_type
 
     if not os.path.exists(opt.save_dir): os.mkdir(opt.save_dir)
     output_dir = os.path.join(opt.save_dir, 'flash3d') # temporary output of Flash3D
+    if not os.path.exists(output_dir): os.mkdir(output_dir)
 
     # ori_dir = os.getcwd() # save for standby
     os.chdir(output_dir)
@@ -136,6 +126,8 @@ def v2x_inference(opt, dair_info, cfg: DictConfig, view_type: str = 'inf', save_
     cfg.data_loader.batch_size = 1
     cfg.data_loader.num_workers = 1
     # TODO: for GaussianPredictor loading
+
+    pdb.set_trace()
     model = GaussianPredictor(cfg)
 
     device = torch.device("cuda:0")
@@ -151,7 +143,7 @@ def v2x_inference(opt, dair_info, cfg: DictConfig, view_type: str = 'inf', save_
     # inference_dataset = InferenceV2X(dair_info=dair_info, type=type)
     # dataset, dataloader = create_datasets(cfg, split=split)
     # (opt, model, cfg, evaluator, dair_info, view_type='inf', device=None, save_vis=False)
-    score_dict_by_name, gaussian_outputs = evaluate(opt, model, cfg, evaluator, dair_info, view_type,
+    score_dict_by_name, gaussian_outputs = evaluate(opt, model, cfg, evaluator, dair_info, view_type=view_type,
                                   device=device, save_vis=save_result, return_GS=return_GS)
     print(json.dumps(score_dict_by_name, indent=4))
     if cfg.dataset.name=="re10k":

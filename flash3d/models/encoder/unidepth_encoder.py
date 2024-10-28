@@ -1,7 +1,7 @@
 import torch, pdb
 import torch.nn as nn
 import torch.nn.functional as F
-
+from unidepth.models import UniDepthV1
 from einops import rearrange
 from flash3d.models.encoder.resnet_encoder import ResnetEncoder
 from flash3d.models.decoder.resnet_decoder import ResnetDecoder, ResnetDepthDecoder
@@ -9,14 +9,20 @@ from flash3d.models.decoder.resnet_decoder import ResnetDecoder, ResnetDepthDeco
 class UniDepthExtended(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-
+        pdb.set_trace()
         self.cfg = cfg
+        # self.unidepth = torch.hub.load(
+        #     "lpiccinelli-eth/UniDepth", "UniDepth", version=cfg.model.depth.version,
+        #     backbone=cfg.model.depth.backbone, pretrained=True, trust_repo=True,
+        #     force_reload=True
+        # )
         # hf repo_id: lpiccinelli/unidepth-v1-vitl14
-        self.unidepth = torch.hub.load(
-            "../../../../../lpiccinelli-eth/unidepth", "UniDepth", version=cfg.model.depth.version,
-            backbone=cfg.model.depth.backbone, pretrained=True, trust_repo=True, 
-            force_reload=True
-        )
+        self.unidepth = UniDepthV1.from_pretrained("../../../../../lpiccinelli-eth/unidepth")
+        # self.unidepth = torch.hub.load(
+        #     "../../../../../lpiccinelli-eth/unidepth", "UniDepth", source='local', version=cfg.model.depth.version,
+        #     backbone=cfg.model.depth.backbone, pretrained=True, trust_repo=True,
+        #     force_reload=True
+        # )
         # outside of V2X-Gaussian
 
         self.parameters_to_train = []
