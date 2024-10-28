@@ -1,7 +1,7 @@
 import torch, pdb
 import logging
 from torch.utils.data import DataLoader
-
+pdb.set_trace()
 from packaging.version import Version
 from flash3d.datasets.re10k import Re10KDataset
 from flash3d.datasets.nyu.dataset import NYUv2Dataset
