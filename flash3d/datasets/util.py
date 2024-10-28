@@ -1,4 +1,5 @@
 import torch, pdb
+pdb.set_trace()
 import logging
 from torch.utils.data import DataLoader
 pdb.set_trace()
@@ -31,7 +32,7 @@ def create_datasets(cfg, split="val", type='ori'):
 
     return dataset, data_loader
 
-pdb.set_trace()
+print(torch.__version__)
 if Version(torch.__version__) < Version("1.11"):
     from torch.utils.data._utils.collate import default_collate
 else:

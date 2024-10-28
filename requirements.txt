@@ -52,7 +52,7 @@ hydra-core==1.7.0
 jaxtyping
 neptune
 pytubefix
-
+mpi4py
 
 
 
