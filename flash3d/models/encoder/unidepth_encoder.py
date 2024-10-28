@@ -11,19 +11,8 @@ class UniDepthExtended(nn.Module):
         super().__init__()
         pdb.set_trace()
         self.cfg = cfg
-        # self.unidepth = torch.hub.load(
-        #     "lpiccinelli-eth/UniDepth", "UniDepth", version=cfg.model.depth.version,
-        #     backbone=cfg.model.depth.backbone, pretrained=True, trust_repo=True,
-        #     force_reload=True
-        # )
-        # hf repo_id: lpiccinelli/unidepth-v1-vitl14
-        self.unidepth = UniDepthV1.from_pretrained("../../../../../lpiccinelli-eth/unidepth")
-        # self.unidepth = torch.hub.load(
-        #     "../../../../../lpiccinelli-eth/unidepth", "UniDepth", source='local', version=cfg.model.depth.version,
-        #     backbone=cfg.model.depth.backbone, pretrained=True, trust_repo=True,
-        #     force_reload=True
-        # )
-        # outside of V2X-Gaussian
+        pdb.set_trace()
+        self.unidepth = UniDepthV1.from_pretrained("../../../../../lpiccinelli-eth/unidepth", local_files_only=True)
 
         self.parameters_to_train = []
         if cfg.model.backbone.name == "resnet":

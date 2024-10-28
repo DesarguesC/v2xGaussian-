@@ -2,6 +2,7 @@ from functools import partial
 
 import torch
 import torch.nn as nn
+from typing import Union
 import torch.nn.functional as F
 from einops import rearrange
 from xformers.components.attention import NystromAttention
@@ -19,7 +20,7 @@ class NystromBlock(AttentionBlock):
         cosine: bool = False,
         gated: bool = False,
         layer_scale: float = 1.0,
-        context_dim: int | None = None,
+        context_dim: Union[int, None] = None,
     ):
         super().__init__(
             dim=dim,
@@ -38,11 +39,11 @@ class NystromBlock(AttentionBlock):
     def attn(
         self,
         x: torch.Tensor,
-        attn_bias: torch.Tensor | None = None,
-        context: torch.Tensor | None = None,
-        pos_embed: torch.Tensor | None = None,
-        pos_embed_context: torch.Tensor | None = None,
-        rope: nn.Module | None = None,
+        attn_bias: Union[torch.Tensor, None] = None,
+        context: Union[torch.Tensor, None] = None,
+        pos_embed: Union[torch.Tensor, None] = None,
+        pos_embed_context: Union[torch.Tensor, None] = None,
+        rope: Union[nn.Module, None] = None,
     ) -> torch.Tensor:
         x = self.norm_attnx(x)
         context = self.norm_attnctx(context)

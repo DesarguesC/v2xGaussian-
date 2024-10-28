@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from unidepth.utils.misc import default
-
+from typing import Union
 from .activation import SwiGLU
 
 
@@ -13,7 +13,7 @@ class MLP(nn.Module):
         expansion: int = 4,
         dropout: float = 0.0,
         gated: bool = False,
-        output_dim: int | None = None,
+        output_dim: Union[int, None] = None,
     ):
         super().__init__()
         if gated:

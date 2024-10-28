@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
+from typing import Union
 from timm.models.layers import trunc_normal_
 
 from unidepth.layers import (MLP, AttentionBlock, ConvUpsampleShuffle,
@@ -156,7 +157,7 @@ class DepthHead(nn.Module):
         hidden_dim: int,
         num_heads: int = 8,
         expansion: int = 4,
-        depths: int | list[int] = 4,
+        depths: Union[int, list[int]] = 4,
         checkpoint: bool = True,
         camera_dim: int = 256,
         num_resolutions: int = 4,

@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
-
+from typing import Optional, Union
 
 class LayerScale(nn.Module):
     def __init__(
         self,
         dim: int,
-        init_values: float | torch.Tensor = 1e-5,
+        init_values: Optional[Union[float, torch.Tensor]] = 1e-5,
         inplace: bool = False,
     ) -> None:
         super().__init__()

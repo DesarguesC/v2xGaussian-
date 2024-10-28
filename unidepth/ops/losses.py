@@ -3,7 +3,7 @@ Author: Luigi Piccinelli
 Licensed under the CC-BY NC 4.0 license (http://creativecommons.org/licenses/by-nc/4.0/)
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -43,7 +43,7 @@ def masked_mean_var(data: torch.Tensor, mask: torch.Tensor, dim: List[int]):
     return mask_mean.squeeze(dim), mask_var.squeeze(dim)
 
 
-def masked_mean(data: torch.Tensor, mask: torch.Tensor | None, dim: List[int]):
+def masked_mean(data: torch.Tensor, mask: Union[torch.Tensor, None], dim: List[int]):
     if mask is None:
         return data.mean(dim=dim, keepdim=True)
     mask = mask.float()
@@ -162,8 +162,8 @@ class SILog(nn.Module):
         target: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
         interpolate: bool = True,
-        scale_inv: torch.Tensor | None = None,
-        ss_inv: torch.Tensor | None = None,
+        scale_inv: Union[torch.Tensor, None] = None,
+        ss_inv: Union[torch.Tensor, None] = None,
         **kwargs,
     ) -> torch.Tensor:
         if interpolate:
@@ -246,8 +246,8 @@ class MSE(nn.Module):
         self,
         input: torch.Tensor,
         target: torch.Tensor,
-        mask: torch.Tensor | None = None,
-        batch_mask: torch.Tensor | None = None,
+        mask: Union[torch.Tensor, None] = None,
+        batch_mask: Union[torch.Tensor, None] = None,
         **kwargs,
     ) -> torch.Tensor:
         input = input[..., : target.shape[-1]]  # B N C or B H W C
