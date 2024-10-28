@@ -47,6 +47,17 @@ webdataset==0.2.35
 plyfile==1.0.3
 pytorch3d==0.7.5
 
+# flash3d
+hydra-core==1.7.0
+jaxtyping
+neptune
+pytubefix
+
+
+
+
+
+
 
 # As in README.md
 # mmcv-full==1.4.4
