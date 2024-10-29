@@ -40,6 +40,10 @@ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation -
 # otherwise
 pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./ 
 
+# If failed, you can try:
+pip install -v --disable-pip-version-check --no-build-isolation --no-cache-dir ./
+
+
 # build DCN module
 cd lidar2dep/model/deformconv && python setup.py build install && cd ../../../
 #mmcv
@@ -56,6 +60,11 @@ pip install -v -e .
 ```bash
 pip install -e submodules/diff-gaussian-rasterization-depth-acc
 ```
+## Flash3D
+```bash
+pip install diff-gaussian-rasterization @ git+https://github.com/eldar/diff-gaussian-rasterization-w-pose@main
+```
+
 
 
 Note that when install "apex", there is probably encountered with an error "cannot import name 'container_abcs' from 'torch._six'", 
