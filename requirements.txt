@@ -21,6 +21,7 @@ dearpygui
 # for stable-diffusion
 huggingface_hub
 diffusers
+
 accelerate
 transformers
 # for dmtet and mesh export
@@ -39,16 +40,16 @@ h5py
 open3d
 anthropic
 
-timm==0.4.12
+timm
 albumentations==0.4.3
-webdataset==0.2.35
+# webdataset==0.2.35
 
 # drgs
 plyfile==1.0.3
-pytorch3d==0.7.5
+
 
 # flash3d
-hydra-core==1.7.0
+hydra-core
 jaxtyping
 neptune
 pytubefix
