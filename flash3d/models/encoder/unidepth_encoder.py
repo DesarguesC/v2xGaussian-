@@ -9,10 +9,9 @@ from flash3d.models.decoder.resnet_decoder import ResnetDecoder, ResnetDepthDeco
 class UniDepthExtended(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        pdb.set_trace()
         self.cfg = cfg
-        pdb.set_trace()
-        self.unidepth = UniDepthV1.from_pretrained("../../../../../lpiccinelli-eth/unidepth", local_files_only=True)
+        # self.unidepth = UniDepthV1.from_pretrained("../lpiccinelli-eth/unidepth", local_files_only=True)
+        self.unidepth = UniDepthV1.from_pretrained("../lpiccinelli/unidepth-v1-vitl14", local_files_only=True)
 
         self.parameters_to_train = []
         if cfg.model.backbone.name == "resnet":

@@ -9,6 +9,8 @@ from omegaconf import OmegaConf, DictConfig
 from basicsr.utils import tensor2img, img2tensor
 from lidar2dep.data.process import colorize
 from PIL import Image
+
+from flash3d.models.encoder.unidepth_encoder import UniDepthExtended
 from flash3d.evaluate import v2x_inference
 
 from drgs_utils.gaussian_renderer import render, network_gui
@@ -352,12 +354,11 @@ def train_DRGS(
 
     iter_start = torch.cuda.Event(enable_timing=True)
     iter_end = torch.cuda.Event(enable_timing=True)
-
     flash3d_cfg = load_configs_from_folder('./flash3d/configs')
-    pdb.set_trace()
     flash3d_cfg.dataset.height, flash3d_cfg.dataset.width = inf_view_veh.shape # (h, w)
 
-
+    pdb.set_trace()
+    unidepth_pre = UniDepthExtended(flash3d_cfg)
 
     render_threshold = 1000
     pdb.set_trace()
@@ -365,8 +366,8 @@ def train_DRGS(
     while debug_flag:
         debug_flag = False
         try:
-            score_dict_inf, gaussian_outputs_inf = v2x_inference(args, dair_info, flash3d_cfg, view_type='inf', save_result=True, return_GS=True)
-            score_dict_veh, gaussian_outputs_veh = v2x_inference(args, dair_info, flash3d_cfg, view_type='veh', save_result=True, return_GS=True)
+            score_dict_inf, gaussian_outputs_inf = v2x_inference(args, dair_info, flash3d_cfg, split='test', view_type='inf', unidepth_model=unidepth_pre, save_result=True, return_GS=True)
+            score_dict_veh, gaussian_outputs_veh = v2x_inference(args, dair_info, flash3d_cfg, split='test', view_type='veh', unidepth_model=unidepth_pre, save_result=True, return_GS=True)
             # net_image = render(custom_cam, gaussian, pipe, background, scaling_modifer)["render"]
             # TODO: 先用Flash3D进行推理 | 用Flash3D产生的GS结果作初始？
         except Exception as err:

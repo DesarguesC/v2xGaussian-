@@ -50,7 +50,7 @@ def get_model_instance(model):
 #     return input_image
 
 
-def evaluate(opt, model, cfg, evaluator, dair_info, view_type='inf', device=None, save_vis=False, return_GS=False):
+def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf', device=None, save_vis=False, return_GS=False):
     out_base_dir = os.path.join(opt.save_dir, 'flash3d')
 
     out_dir_ply, out_pred_dir = os.path.join(out_base_dir, 'ply'), os.path.join(out_base_dir, 'pred') # create via opt
@@ -59,17 +59,18 @@ def evaluate(opt, model, cfg, evaluator, dair_info, view_type='inf', device=None
     for u in [opt.save_dir, out_base_dir, out_dir_ply, out_pred_dir, out_gt_dir]:
         if not os.path.exists(u): os.mkdir(u)
 
-    score_dict = {}
+    pdb.set_trace()
 
+    score_dict = {}
     model_model = get_model_instance(model)
     model_model.set_eval()
 
-    inputs = InferenceV2X(dair_info, view_type=view_type)
+    inputs = InferenceV2X(split, cfg, dair_info, view_type=view_type)
     with torch.no_grad():
-        if device is not None:
-            to_device(inputs, device)
+        # if device is not None:
+        #     to_device(inputs, device)
         # inputs["target_frame_ids"] = target_frame_ids
-        outputs = model(inputs) # dict
+        outputs = model(inputs.getInputs(device)) # dict
 
     f_id = 0
     # for f_id in score_dict.keys():
@@ -80,6 +81,8 @@ def evaluate(opt, model, cfg, evaluator, dair_info, view_type='inf', device=None
     else:
         gt = inputs[('color', f_id, 0)]
     # should work in for B>1, however be careful of reduction
+
+    pdb.set_trace()
     out = evaluator(pred, gt)
     if save_vis:
         save_ply(outputs, out_dir_ply / f"{f_id}.ply", gaussians_per_pixel=model.cfg.model.gaussians_per_pixel)
@@ -111,7 +114,7 @@ def evaluate(opt, model, cfg, evaluator, dair_info, view_type='inf', device=None
     return (score_dict_by_name, outputs) if return_GS else score_dict_by_name
 
 
-def v2x_inference(opt, dair_info, cfg: DictConfig, view_type: str = 'inf', save_result=True, return_GS=True):
+def v2x_inference(opt, dair_info, cfg: DictConfig, split='test', view_type: str = 'inf', unidepth_model=None, save_result=True, return_GS=True):
 
     assert view_type in ['inf', 'veh'], view_type
 
@@ -120,15 +123,15 @@ def v2x_inference(opt, dair_info, cfg: DictConfig, view_type: str = 'inf', save_
     if not os.path.exists(output_dir): os.mkdir(output_dir)
 
     # ori_dir = os.getcwd() # save for standby
-    os.chdir(output_dir)
-    print(f"Saving dir: {output_dir} | Flash3D Working dir: {output_dir}")
+    # os.chdir(output_dir)
+    print(f"Saving dir: {output_dir}")
 
     cfg.data_loader.batch_size = 1
     cfg.data_loader.num_workers = 1
     # TODO: for GaussianPredictor loading
 
     pdb.set_trace()
-    model = GaussianPredictor(cfg)
+    model = GaussianPredictor(cfg, unidepth_model=unidepth_model)
 
     device = torch.device("cuda:0")
     model.to(device)
@@ -140,10 +143,7 @@ def v2x_inference(opt, dair_info, cfg: DictConfig, view_type: str = 'inf', save_
     evaluator.to(device)
 
     split = "test"
-    # inference_dataset = InferenceV2X(dair_info=dair_info, type=type)
-    # dataset, dataloader = create_datasets(cfg, split=split)
-    # (opt, model, cfg, evaluator, dair_info, view_type='inf', device=None, save_vis=False)
-    score_dict_by_name, gaussian_outputs = evaluate(opt, model, cfg, evaluator, dair_info, view_type=view_type,
+    score_dict_by_name, gaussian_outputs = evaluate(opt, model, cfg, evaluator, dair_info, split, view_type=view_type,
                                   device=device, save_vis=save_result, return_GS=return_GS)
     print(json.dumps(score_dict_by_name, indent=4))
     if cfg.dataset.name=="re10k":

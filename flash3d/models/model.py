@@ -25,7 +25,7 @@ def to_device(inputs, device):
 
 
 class GaussianPredictor(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, unidepth_model = None):
         super().__init__()
 
         self.cfg = cfg
@@ -38,7 +38,7 @@ class GaussianPredictor(nn.Module):
         # define the model
         if "unidepth" in cfg.model.name:
 
-            models["unidepth_extended"] = UniDepthExtended(cfg)
+            models["unidepth_extended"] = UniDepthExtended(cfg) if unidepth_model is None else unidepth_model
             self.parameters_to_train += models["unidepth_extended"].get_parameter_groups()
 
         self.models = nn.ModuleDict(models)

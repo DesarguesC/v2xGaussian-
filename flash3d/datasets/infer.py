@@ -2,7 +2,6 @@ import os, pdb
 import random
 import torch
 import numpy as np
-import torch.utils.data as data
 import torchvision.transforms as T
 
 from PIL import Image
@@ -10,8 +9,8 @@ from typing import Optional
 from pathlib import Path
 from flash3d.datasets.data import pil_loader
 
-class InferenceV2X(data.Dataset):
-    def __init__(self, dair_info, num_scales: int = 1, view_type: str = 'inf'):
+class InferenceV2X:
+    def __init__(self, split, cfg, dair_info, num_scales: int = 1, view_type: str = 'inf'):
         self.is_train = True
         self.num_scales = num_scales
         self.type = view_type
@@ -30,6 +29,9 @@ class InferenceV2X(data.Dataset):
             dict{'height':..., 'weight':..., 'cam_K': np.ndarray}
         """
         self.intrinsics = getattr(dair_info, f'normalization_{view_type}')["radius"]
+
+        self.interp = Image.LANCZOS
+        self.to_tensor = T.ToTensor()
         # 处理好的相机内参
         """
         ORIGINAL - calibs
@@ -43,6 +45,20 @@ class InferenceV2X(data.Dataset):
             "crop": box
         }
         """
+        if cfg.model.gaussian_rendering:
+            frame_idxs = [0] + cfg.model.gauss_novel_frames
+            if cfg.dataset.stereo:
+                if split == "train":
+                    stereo_frames = []
+                    for frame_id in frame_idxs:
+                        stereo_frames += [f"s{frame_id}"]
+                    frame_idxs += stereo_frames
+                else:
+                    frame_idxs = [0, "s0"]
+        else:
+            # SfMLearner frames, eg. [0, -1, 1]
+            frame_idxs = cfg.model.frame_ids.copy()
+        self.frame_idxs = frame_idxs
         frame_idxs = [0, 1, 2] # as written in flash3d/configs/model/gaussian.yaml
         self.frame_idxs = frame_idxs
         try:
@@ -57,22 +73,56 @@ class InferenceV2X(data.Dataset):
             self.hue = 0.1
 
         self.pad_border_aug = 0 # DAIR-V2X is KITTI-like dataset
+        self.resize = {}
+        for i in range(self.num_scales):
+            s = 2 ** i
+            new_size = (self.image_size[0] // s, self.image_size[1] // s)
+            self.resize[i] = T.Resize(new_size, interpolation=self.interp)
+
+        self.resize_depth = T.Resize(self.image_size, interpolation=T.InterpolationMode.NEAREST)
 
 
     def __len__(self):
         return 1
 
-    def __getitem__(self, item):
+    def preprocess(self, inputs, color_aug):
+        """Resize colour images to the required scales and augment if required
 
+        We create the color_aug object in advance and apply the same augmentation to all
+        images in this item. This ensures that all images input to the pose network receive the
+        same augmentation.
+        """
+        for k in list(inputs):
+            frame = inputs[k]
+            if "color" in k:
+                n, im, i = k
+                for i in range(self.num_scales):
+                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
+
+        for k in list(inputs):
+            f = inputs[k]
+            if "color" in k:
+                n, im, i = k
+                inputs[(n, im, i)] = self.to_tensor(f)
+                if self.cfg.dataset.pad_border_aug != 0:
+                    inputs[(n + "_aug", im, i)] = self.to_tensor(self.pad_border_fn(color_aug(f)))
+                else:
+                    inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
+
+
+    def getInputs(self, device='cuda'):
+        print('getting inference item...')
         inputs = {}
         # only single
         try_flag = True # DEBUG
         while try_flag:
+            pdb.set_trace()
             try_flag = False
             try:
                 # self.num_scales = 1
                 for scale in range(self.num_scales):
-                    K = self.K
+                    # pdb.set_trace()
+                    K = self.K['cam_K']
                     K_tgt = K.copy()
                     K_src = K.copy()
 
@@ -87,22 +137,23 @@ class InferenceV2X(data.Dataset):
 
                     inv_K_src = np.linalg.pinv(K_src)
 
-                    inputs[("K_tgt", scale)] = torch.from_numpy(K_tgt)[..., :3, :3]
-                    inputs[("K_src", scale)] = torch.from_numpy(K_src)[..., :3, :3]
-                    inputs[("inv_K_src", scale)] = torch.from_numpy(inv_K_src)[..., :3, :3]
+                    inputs[("K_tgt", scale)] = torch.from_numpy(K_tgt)[..., :3, :3].to(device)
+                    inputs[("K_src", scale)] = torch.from_numpy(K_src)[..., :3, :3].to(device)
+                    inputs[("inv_K_src", scale)] = torch.from_numpy(inv_K_src)[..., :3, :3].to(device)
 
 
-                inputs[("color", 0, -1)] = Image.fromarray(self.img)
+                inputs[("color", 0, -1)] = Image.fromarray(self.img) # need tensor ?
                 # only single frame
-                inputs[("depth_gt", 0, 0)] = self.depth
-                inputs[("T_c2w", 0)] = self.cam2world
+                inputs[("depth_gt", 0, 0)] = self.depth # need tensor ?
+                inputs[("T_c2w", 0)] = self.cam2world # need tensor ?
 
             except Exception as err:
+                pdb.set_trace()
                 print(f'err = {err}')
                 try_flag = True
-                pdb.set_trace()
 
 
         return inputs
 
-
+    def __getitem__(self, item):
+        return self.getInputs()
