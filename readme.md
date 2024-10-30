@@ -43,13 +43,15 @@ pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cud
 # If failed, you can try:
 pip install -v --disable-pip-version-check --no-build-isolation --no-cache-dir ./
 
+# mmcv & mmseg
+pip install mmcv-full==1.4.4 mmsegmentation==0.22.1
 
 # build DCN module
 cd lidar2dep/model/deformconv && python setup.py build install && cd ../../../
 #mmcv
 git clone https://github.com/open-mmlab/mmcv.git
 cd mmcv
-pip install -v -e .
+pip install -v -e . # if version err occurred, change it to mmcv==2.0.0
 # mmseg
 cd ../ && git clone -b main https://github.com/open-mmlab/mmsegmentation.git
 cd mmsegmentation
