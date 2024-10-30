@@ -3,7 +3,7 @@ rich
 ninja
 numpy==1.23.1 # original: 1.24.4
 Pillow==9.4.0
-pytorch_lightning
+pytorch_lightning==1.8.6
 pandas
 scipy
 scikit-learn
@@ -21,6 +21,7 @@ dearpygui
 # for stable-diffusion
 huggingface_hub
 diffusers
+xformers==0.0.16
 
 accelerate
 transformers
@@ -42,7 +43,7 @@ anthropic
 
 timm
 albumentations==0.4.3
-# webdataset==0.2.35
+webdataset==0.2.35
 
 # drgs
 plyfile==1.0.3
