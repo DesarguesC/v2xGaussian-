@@ -58,18 +58,18 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
 
     for u in [opt.save_dir, out_base_dir, out_dir_ply, out_pred_dir, out_gt_dir]:
         if not os.path.exists(u): os.mkdir(u)
-
-    pdb.set_trace()
-
     score_dict = {}
     model_model = get_model_instance(model)
     model_model.set_eval()
 
+    pdb.set_trace()
     inputs = InferenceV2X(split, cfg, dair_info, view_type=view_type)
+
     with torch.no_grad():
         # if device is not None:
         #     to_device(inputs, device)
         # inputs["target_frame_ids"] = target_frame_ids
+        pdb.set_trace()
         outputs = model(inputs.getInputs(device)) # dict
 
     f_id = 0
@@ -142,7 +142,7 @@ def v2x_inference(opt, dair_info, cfg: DictConfig, split='test', view_type: str 
     evaluator = Evaluator() # crop_border = True
     evaluator.to(device)
 
-    split = "test"
+    # split = "test"
     score_dict_by_name, gaussian_outputs = evaluate(opt, model, cfg, evaluator, dair_info, split, view_type=view_type,
                                   device=device, save_vis=save_result, return_GS=return_GS)
     print(json.dumps(score_dict_by_name, indent=4))

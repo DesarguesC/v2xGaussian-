@@ -31,10 +31,8 @@ class GaussianPredictor(nn.Module):
         self.cfg = cfg
         # checking height and width are multiples of 32
         assert cfg.dataset.width % 32 == 0 and cfg.dataset.height % 32 == 0, "'width' and 'height' must be a multiple of 32"
-
         models = {}
         self.parameters_to_train = []
-        pdb.set_trace()
         # define the model
         if "unidepth" in cfg.model.name:
 

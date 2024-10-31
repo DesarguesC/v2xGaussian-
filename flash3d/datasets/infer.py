@@ -13,6 +13,7 @@ class InferenceV2X:
     def __init__(self, split, cfg, dair_info, num_scales: int = 1, view_type: str = 'inf'):
         self.is_train = True
         self.num_scales = num_scales
+        self.cfg = cfg
         self.type = view_type
         # dair_info: drgs_util.scene.dataset_renders.Dair_v2x_Info[class]
         self.img = getattr(dair_info, f'{view_type}_rgb') # np.ndarray
@@ -30,6 +31,7 @@ class InferenceV2X:
         """
         self.intrinsics = getattr(dair_info, f'normalization_{view_type}')["radius"]
 
+        self.pad_border_fn = T.Pad((self.cfg.dataset.pad_border_aug, self.cfg.dataset.pad_border_aug))
         self.interp = Image.LANCZOS
         self.to_tensor = T.ToTensor()
         # 处理好的相机内参
@@ -58,9 +60,11 @@ class InferenceV2X:
         else:
             # SfMLearner frames, eg. [0, -1, 1]
             frame_idxs = cfg.model.frame_ids.copy()
+
         self.frame_idxs = frame_idxs
         frame_idxs = [0, 1, 2] # as written in flash3d/configs/model/gaussian.yaml
         self.frame_idxs = frame_idxs
+
         try:
             self.brightness = (0.8, 1.2)
             self.contrast = (0.8, 1.2)
@@ -92,8 +96,8 @@ class InferenceV2X:
         images in this item. This ensures that all images input to the pose network receive the
         same augmentation.
         """
+
         for k in list(inputs):
-            frame = inputs[k]
             if "color" in k:
                 n, im, i = k
                 for i in range(self.num_scales):
@@ -109,14 +113,33 @@ class InferenceV2X:
                 else:
                     inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
 
+        return inputs
 
     def getInputs(self, device='cuda'):
         print('getting inference item...')
+        cfg = self.cfg
         inputs = {}
+
+        do_color_aug = cfg.dataset.color_aug and self.is_train and random.random() > 0.5
+        # do_flip = cfg.dataset.flip_left_right and self.is_train and random.random() > 0.5
+
+        frame_idxs = list(self.frame_idxs).copy()
+
+        # for f_id in frame_idxs:
+        #     if type(f_id) == str and f_id[0] == "s":  # stereo frame
+        #         the_side = stereo_flip[side]
+        #         i = int(f_id[1:])
+        #     else:
+        #         the_side = side
+        #         i = f_id
+        #     inputs[("color", f_id, -1)] = self.get_color(folder, frame_index + i, the_side, do_flip)
+        #
+        # inputs[("frame_id", 0)] = \
+        #     f"{os.path.split(folder)[1]}+{side}+{frame_index:06d}"
+
         # only single
         try_flag = True # DEBUG
         while try_flag:
-            pdb.set_trace()
             try_flag = False
             try:
                 # self.num_scales = 1
@@ -141,11 +164,24 @@ class InferenceV2X:
                     inputs[("K_src", scale)] = torch.from_numpy(K_src)[..., :3, :3].to(device)
                     inputs[("inv_K_src", scale)] = torch.from_numpy(inv_K_src)[..., :3, :3].to(device)
 
+                if do_color_aug:
+                    raise NotImplementedError
+                    color_aug = random_color_jitter(self.brightness, self.contrast, self.saturation, self.hue)
+                else:
+                    color_aug = (lambda x: x)
 
-                inputs[("color", 0, -1)] = Image.fromarray(self.img) # need tensor ?
                 # only single frame
-                inputs[("depth_gt", 0, 0)] = self.depth # need tensor ?
-                inputs[("T_c2w", 0)] = self.cam2world # need tensor ?
+                inputs[("color", 0, -1)] = Image.fromarray(self.img)  # need tensor ?
+                inputs[("depth_gt", 0, 0)] = self.depth  # need tensor ?
+                inputs[("T_c2w", 0)] = self.cam2world  # need tensor ?
+
+                inputs = self.preprocess(inputs, color_aug)
+
+                # self.to_tensor(color_aug_fn(self.pad_border_fn(img_scale)))
+
+
+
+
 
             except Exception as err:
                 pdb.set_trace()
