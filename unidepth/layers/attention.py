@@ -6,6 +6,7 @@ Licensed under the CC-BY NC 4.0 license (http://creativecommons.org/licenses/by-
 from functools import partial
 from typing import Union
 import torch
+import pdb
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
@@ -18,9 +19,10 @@ from .mlp import MLP
 # Efficient implementation equivalent to the following:
 def scaled_dot_product_attention(query, key, value, attn_mask=None, dropout_p=0.0,
         is_causal=False, scale=None, enable_gqa=False) -> torch.Tensor:
+    
     L, S = query.size(-2), key.size(-2)
     scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
-    attn_bias = torch.zeros(L, S, dtype=query.dtype)
+    attn_bias = torch.zeros(L, S, dtype=query.dtype).to(query.device)
     if is_causal:
         assert attn_mask is None
         temp_mask = torch.ones(L, S, dtype=torch.bool).tril(diagonal=0)
@@ -143,6 +145,7 @@ class AttentionBlock(nn.Module):
         pos_embed_context: Union[torch.Tensor, None] = None,
         rope: Union[nn.Module, None] = None,
     ) -> torch.Tensor:
+
         x = self.norm_attnx(x)
         context = self.norm_attnctx(context)
         k, v = rearrange(
@@ -167,7 +170,6 @@ class AttentionBlock(nn.Module):
 
         if self.cosine:
             q, k = map(partial(F.normalize, p=2, dim=-1), (q, k))  # cosine sim
-
         x = scaled_dot_product_attention(
             q, k, v, dropout_p=self.dropout, attn_mask=attn_bias
         )

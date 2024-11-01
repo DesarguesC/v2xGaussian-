@@ -1,3 +1,4 @@
+import pdb
 from functools import partial
 
 import torch
@@ -32,6 +33,7 @@ class NystromBlock(AttentionBlock):
             layer_scale=layer_scale,
             context_dim=context_dim,
         )
+        # pdb.set_trace()
         self.attention_fn = NystromAttention(
             num_landmarks=128, num_heads=num_heads, dropout=dropout
         )
@@ -51,7 +53,6 @@ class NystromBlock(AttentionBlock):
             self.kv(context), "b n (kv h d) -> b n h d kv", h=self.num_heads, kv=2
         ).unbind(dim=-1)
         q = rearrange(self.q(x), "b n (h d) -> b n h d", h=self.num_heads)
-
         if rope is not None:
             q = rope(q)
             k = rope(k)
@@ -73,3 +74,32 @@ class NystromBlock(AttentionBlock):
         x = rearrange(x, "b n h d -> b n (h d)")
         x = self.out(x)
         return x
+
+    # TODO: debug
+    # def forward(
+    #     self,
+    #     x: torch.Tensor,
+    #     attn_bias: Union[torch.Tensor, None] = None,
+    #     context: Union[torch.Tensor, None] = None,
+    #     pos_embed: Union[torch.Tensor, None] = None,
+    #     pos_embed_context: Union[torch.Tensor, None] = None,
+    #     rope: Union[nn.Module, None] = None,
+    # ) -> torch.Tensor:
+    #     print('[Debug] [Forward] In class NystromBlock(AttentionBlock)...')
+    #     pdb.set_trace()
+    #     context = x if context is None else context
+    #     x = (
+    #         self.ls1(
+    #             self.attn(
+    #                 x,
+    #                 rope=rope,
+    #                 attn_bias=attn_bias,
+    #                 context=context,
+    #                 pos_embed=pos_embed,
+    #                 pos_embed_context=pos_embed_context,
+    #             )
+    #         )
+    #         + x
+    #     )
+    #     x = self.ls2(self.mlp(x)) + x
+    #     return x

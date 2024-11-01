@@ -4,7 +4,7 @@ Licensed under the CC-BY NC 4.0 license (http://creativecommons.org/licenses/by-
 """
 
 from typing import List, Tuple, Union
-
+import pdb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -195,9 +195,10 @@ class DepthHead(nn.Module):
     def forward(
         self, features: torch.Tensor, rays_hr: torch.Tensor, pos_embed, level_embed
     ) -> torch.Tensor:
+        # pdb.set_trace()
+
         features = features.unbind(dim=-1)
         shapes = self.shapes
-
         # camera_embedding
         # torch.cuda.synchronize()
         # start = time()
@@ -216,6 +217,8 @@ class DepthHead(nn.Module):
             ),
             dim=-1,
         )
+
+        # pdb.set_trace()
         rays_embedding_16 = self.project_rays16(rsh_cart_8(rays_embedding_16))
         rays_embedding_8 = self.project_rays8(rsh_cart_8(rays_embedding_8))
         rays_embedding_4 = self.project_rays4(rsh_cart_8(rays_embedding_4))
@@ -239,9 +242,12 @@ class DepthHead(nn.Module):
         # Aggregate camera: D- > D|E
         latents_16 = self.prompt_camera(latents_16, context=rays_embedding_16)
 
+        # pdb.set_trace()
         # Block 16 - Out 8
         for layer in self.layers_16:
             latents_16 = layer(latents_16, pos_embed=rays_embedding_16)
+
+        # pdb.set_trace()
         latents_8 = self.up8(
             rearrange(
                 latents_16 + rays_embedding_16,
@@ -273,6 +279,7 @@ class DepthHead(nn.Module):
             )
         )
 
+        # pdb.set_trace()
         # Block 4 - Out 2
         for layer in self.layers_4:
             latents_4 = layer(latents_4, pos_embed=rays_embedding_4)
@@ -365,12 +372,12 @@ class Decoder(nn.Module):
         return intrinsics, rays
 
     def forward(self, inputs, image_metas) -> torch.Tensor:
-        B, _, H, W = inputs["image"].shape
+        B, _, H, W = inputs["image"].shape # Shape[1,3,462,616]
         device = inputs["image"].device
 
         # make stride happy?
-        original_encoder_outputs = [x.contiguous() for x in inputs["encoder_outputs"]]
-        cls_tokens = [x.contiguous() for x in inputs["cls_tokens"]]
+        original_encoder_outputs = [x.contiguous() for x in inputs["encoder_outputs"]] # item Shape[1,33,44,1024]
+        cls_tokens = [x.contiguous() for x in inputs["cls_tokens"]] # item Shape[1,1,1024]
 
         # collect features and tokens
         original_encoder_outputs = [
@@ -450,6 +457,7 @@ class Decoder(nn.Module):
             else (inputs["K"], inputs["rays"])
         )
 
+        pdb.set_trace()
         # run bulk of the model
         self.depth_layer.set_shapes(common_shape)
         self.depth_layer.set_original_shapes((H, W))

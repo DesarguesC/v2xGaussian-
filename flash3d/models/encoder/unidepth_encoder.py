@@ -59,11 +59,14 @@ class UniDepthExtended(nn.Module):
         outputs_gauss[("K_src", 0)] = inputs[("K_src", 0)] if ("K_src", 0) in inputs.keys() else depth_outs["intrinsics"]
         outputs_gauss[("inv_K_src", 0)] = torch.linalg.inv(outputs_gauss[("K_src", 0)])
 
+        pdb.set_trace()
         if self.cfg.model.backbone.depth_cond:
             # division by 20 is to put depth in a similar range to RGB
             input = torch.cat([inputs["color_aug", 0, 0], depth_outs["depth"] / 20.0], dim=1)
         else:
             input = inputs["color_aug", 0, 0]
+
+        pdb.set_trace()
         encoded_features = self.encoder(input)
         # predict multiple gaussian depths
         if self.cfg.model.gaussians_per_pixel > 1:

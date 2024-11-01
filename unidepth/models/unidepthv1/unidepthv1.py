@@ -128,7 +128,6 @@ class UniDepthV1(
 
         # Get camera infos, if any
         if gt_intrinsics is not None:
-            pdb.set_trace()
             rays, angles = generate_rays(
                 gt_intrinsics, self.image_shape, noisy=self.training
             )
@@ -153,7 +152,6 @@ class UniDepthV1(
         ) / len(predictions)
 
         # Final 3D points backprojection
-        pdb.set_trace()
         pred_angles = generate_rays(pred_intrinsics, (H, W), noisy=False)[-1]
         # You may want to use inputs["angles"] if available?
         pred_angles = rearrange(pred_angles, "b (h w) c -> b c h w", h=H, w=W)
@@ -219,8 +217,6 @@ class UniDepthV1(
         inputs["cls_tokens"] = cls_tokens
         inputs["image"] = rgbs
         if gt_intrinsics is not None:
-            pdb.set_trace()
-
             rays, angles = generate_rays(
                 gt_intrinsics.to(torch.float32), self.image_shape, noisy=self.training
             )
@@ -231,6 +227,7 @@ class UniDepthV1(
             self.pixel_decoder.skip_camera = skip_camera
 
         # decode all
+        pdb.set_trace()
         pred_intrinsics, predictions, _ = self.pixel_decoder(inputs, {})
 
         # undo the reshaping and get original image size (slow)
@@ -245,7 +242,6 @@ class UniDepthV1(
 
         # final 3D points backprojection
         intrinsics = gt_intrinsics if gt_intrinsics is not None else pred_intrinsics
-        pdb.set_trace()
         angles = generate_rays(intrinsics.to(torch.float32), (H, W), noisy=False)[-1]
         angles = rearrange(angles, "b (h w) c -> b c h w", h=H, w=W)
         points_3d = torch.cat((angles, predictions), dim=1)

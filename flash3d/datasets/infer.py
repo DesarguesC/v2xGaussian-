@@ -89,7 +89,7 @@ class InferenceV2X:
     def __len__(self):
         return 1
 
-    def preprocess(self, inputs, color_aug):
+    def preprocess(self, inputs, color_aug, device='cuda'):
         """Resize colour images to the required scales and augment if required
 
         We create the color_aug object in advance and apply the same augmentation to all
@@ -101,7 +101,8 @@ class InferenceV2X:
             if "color" in k:
                 n, im, i = k
                 for i in range(self.num_scales):
-                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
+                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)]).to(device)
+
 
         for k in list(inputs):
             f = inputs[k]
@@ -109,9 +110,9 @@ class InferenceV2X:
                 n, im, i = k
                 inputs[(n, im, i)] = self.to_tensor(f)
                 if self.cfg.dataset.pad_border_aug != 0:
-                    inputs[(n + "_aug", im, i)] = self.to_tensor(self.pad_border_fn(color_aug(f))).to(torch.float32)
+                    inputs[(n + "_aug", im, i)] = self.to_tensor(self.pad_border_fn(color_aug(f))).to(torch.float32).to(device)
                 else:
-                    inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f)).to(torch.float32)
+                    inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f)).to(torch.float32).to(device)
 
         return inputs
 
