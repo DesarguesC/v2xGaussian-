@@ -109,9 +109,9 @@ class InferenceV2X:
                 n, im, i = k
                 inputs[(n, im, i)] = self.to_tensor(f)
                 if self.cfg.dataset.pad_border_aug != 0:
-                    inputs[(n + "_aug", im, i)] = self.to_tensor(self.pad_border_fn(color_aug(f)))
+                    inputs[(n + "_aug", im, i)] = self.to_tensor(self.pad_border_fn(color_aug(f))).to(torch.float32)
                 else:
-                    inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
+                    inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f)).to(torch.float32)
 
         return inputs
 
