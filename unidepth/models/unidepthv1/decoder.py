@@ -457,7 +457,7 @@ class Decoder(nn.Module):
             else (inputs["K"], inputs["rays"])
         )
 
-        pdb.set_trace()
+        # pdb.set_trace()
         # run bulk of the model
         self.depth_layer.set_shapes(common_shape)
         self.depth_layer.set_original_shapes((H, W))

@@ -16,6 +16,7 @@ from flash3d.datasets.util import create_datasets # stuck ?
 from misc.visualise_3d import save_ply
 from flash3d.datasets.infer import InferenceV2X
 
+from misc.util import add_source_frame_id
 
 
 def get_model_instance(model):
@@ -62,14 +63,19 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
     model_model = get_model_instance(model)
     model_model.set_eval()
 
-    pdb.set_trace()
+    eval_frames = ["s0"]
+    target_frame_ids = ["s0"]
+    all_frames = add_source_frame_id(eval_frames)
+    for fid in all_frames:
+        score_dict[fid] = {"ssim": [], "psnr": [], "lpips": [], "name": fid}
+
     inputs = InferenceV2X(split, cfg, dair_info, view_type=view_type)
 
     with torch.no_grad():
         # if device is not None:
         #     to_device(inputs, device)
-        # inputs["target_frame_ids"] = target_frame_ids
         pdb.set_trace()
+        inputs["target_frame_ids"] = target_frame_ids
         outputs = model(inputs.getInputs(device)) # dict
 
     f_id = 0

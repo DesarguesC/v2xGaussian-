@@ -62,11 +62,14 @@ class UniDepthExtended(nn.Module):
         pdb.set_trace()
         if self.cfg.model.backbone.depth_cond:
             # division by 20 is to put depth in a similar range to RGB
+            if(len(inputs["color_aug", 0, 0].shape) < len(depth_outs["depth"].shape)):
+                inputs["color_aug", 0, 0] = inputs["color_aug", 0, 0][None,:,:,:]
             input = torch.cat([inputs["color_aug", 0, 0], depth_outs["depth"] / 20.0], dim=1)
+            # TODO: check why: [3, 320, 576] ~ [1, 1, 320, 576] | 保存下看看
         else:
             input = inputs["color_aug", 0, 0]
 
-        pdb.set_trace()
+        # input.shape: [1, 4, 320, 576]
         encoded_features = self.encoder(input)
         # predict multiple gaussian depths
         if self.cfg.model.gaussians_per_pixel > 1:
@@ -80,15 +83,20 @@ class UniDepthExtended(nn.Module):
         gauss_outs = dict()
         for i in range(self.cfg.model.gaussians_per_pixel):
             outs = self.models["gauss_decoder_"+str(i)](encoded_features)
+            # keys: ['gauss_opacity', 'gauss_scaling', 'gauss_rotation', 'gauss_features_dc', 'gauss_offset', 'gauss_features_rest']
             if self.cfg.model.one_gauss_decoder:
                 gauss_outs |= outs
                 break
             else:
                 for key, v in outs.items():
                     gauss_outs[key] = outs[key] if i==0 else torch.cat([gauss_outs[key], outs[key]], dim=1)
+        # keys: ['gauss_opacity', 'gauss_scaling', 'gauss_rotation', 'gauss_features_dc', 'gauss_offset', 'gauss_features_rest']
         for key, v in gauss_outs.items():
             gauss_outs[key] = rearrange(gauss_outs[key], 'b n ... -> (b n) ...')
         outputs_gauss |= gauss_outs
 
-        pdb.set_trace() # check the "outputs_gauss.keys()"
+        pdb.set_trace()
+        for (k,v) in outputs_gauss.items(): # TODO: check type - float32 ? float64 ?
+            outputs_gauss[k] = v.to(torch.float32)
+
         return outputs_gauss

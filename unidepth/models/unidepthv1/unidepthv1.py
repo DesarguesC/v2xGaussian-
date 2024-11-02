@@ -227,7 +227,6 @@ class UniDepthV1(
             self.pixel_decoder.skip_camera = skip_camera
 
         # decode all
-        pdb.set_trace()
         pred_intrinsics, predictions, _ = self.pixel_decoder(inputs, {})
 
         # undo the reshaping and get original image size (slow)

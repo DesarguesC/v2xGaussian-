@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import pdb
 
 def disp_to_depth(disp, min_depth, max_depth):
     """Convert network's sigmoid output into depth prediction
@@ -82,7 +83,10 @@ class BackprojectDepth(nn.Module):
         # self.ones = ones
 
     def forward(self, depth, inv_K):
+        pdb.set_trace()
         cam_points = torch.matmul(inv_K[:, :3, :3], self.pix_coords.to(depth.device))
+        # inv_K[:,:3,:3].shape      [6, 1, 3]
+        # pix_coords.shape          [2, 3, 184320]
         cam_points = depth.view(self.batch_size, 1, -1) * cam_points
         cam_points = torch.cat([cam_points, self.ones.to(depth.device)], 1)
 

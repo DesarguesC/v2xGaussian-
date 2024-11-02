@@ -35,7 +35,6 @@ class GaussianPredictor(nn.Module):
         self.parameters_to_train = []
         # define the model
         if "unidepth" in cfg.model.name:
-
             models["unidepth_extended"] = UniDepthExtended(cfg) if unidepth_model is None else unidepth_model
             self.parameters_to_train += models["unidepth_extended"].get_parameter_groups()
 
@@ -93,8 +92,7 @@ class GaussianPredictor(nn.Module):
     def forward(self, inputs):
         cfg = self.cfg
         if "unidepth" in cfg.model.name:
-            outputs = self.models["unidepth_extended"](inputs)
-        
+            outputs = self.models["unidepth_extended"](inputs) # DONE
         self.compute_gauss_means(inputs, outputs)
 
         if cfg.model.gaussian_rendering:
@@ -109,13 +107,15 @@ class GaussianPredictor(nn.Module):
         scale = self.cfg.model.scales[0]
         depth = outputs[('depth', scale)]
         B, _, H, W = depth.shape
-        inv_K = outputs[("inv_K_src", scale)]
+        pdb.set_trace()
+        inv_K = outputs[("inv_K_src", scale)][None,:,:] # check: shape; dtype(32or64?）
         if self.cfg.model.gaussians_per_pixel > 1:
             inv_K = rearrange(inv_K[:,None,...].
                               repeat(1, self.cfg.model.gaussians_per_pixel, 1, 1),
                               'b n ... -> (b n) ...')
         # back project depth to world splace
         xyz = self.backproject_depth[str(scale)](depth, inv_K)
+        # TODO: depth.shape [2, 1, 320, 576]; inv_K.shape [6, 1, 3]
         if cfg.model.predict_offset:
             offset = outputs["gauss_offset"]
             if cfg.model.scaled_offset:
@@ -131,6 +131,9 @@ class GaussianPredictor(nn.Module):
     def process_gt_poses(self, inputs, outputs):
         cfg = self.cfg
         keyframe = 0
+
+        pdb.set_trace()
+
         for f_i in self.target_frame_ids(inputs):
             if ("T_c2w", f_i) not in inputs:
                 continue

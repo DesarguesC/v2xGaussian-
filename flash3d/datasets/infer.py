@@ -25,7 +25,8 @@ class InferenceV2X:
         """
             dict{'fg':..., 'bg':..., 'panoptic':...}
         """
-        self.K = getattr(dair_info, f'{view_type}_cam_K')
+        # pdb.set_trace()
+        self.K = getattr(dair_info, f'{view_type}_cam_K') # check the shape of 'cam_K'
         """
             dict{'height':..., 'weight':..., 'cam_K': np.ndarray}
         """
@@ -101,18 +102,23 @@ class InferenceV2X:
             if "color" in k:
                 n, im, i = k
                 for i in range(self.num_scales):
-                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)]).to(device)
+                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
 
-
+        # pdb.set_trace()
         for k in list(inputs):
             f = inputs[k]
             if "color" in k:
                 n, im, i = k
-                inputs[(n, im, i)] = self.to_tensor(f)
+                inputs[(n, im, i)] = self.to_tensor(f).to(device)
                 if self.cfg.dataset.pad_border_aug != 0:
                     inputs[(n + "_aug", im, i)] = self.to_tensor(self.pad_border_fn(color_aug(f))).to(torch.float32).to(device)
                 else:
                     inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f)).to(torch.float32).to(device)
+                # print(f'inputs_item.shape = {inputs[(n + "_aug", im, i)].shape}')
+                # if len(inputs[(n + "_aug", im, i)].shape) < 3:
+                #     pdb.set_trace()
+                #     inputs[(n + "_aug", im, i)] = inputs[(n + "_aug", im, i)][None,:,:] # will be turned to float64 again?
+                #     inputs[(n + "_aug", im, i)] = inputs[(n + "_aug", im, i)].to(torch.float32)
 
         return inputs
 
@@ -124,19 +130,7 @@ class InferenceV2X:
         do_color_aug = cfg.dataset.color_aug and self.is_train and random.random() > 0.5
         # do_flip = cfg.dataset.flip_left_right and self.is_train and random.random() > 0.5
 
-        frame_idxs = list(self.frame_idxs).copy()
-
-        # for f_id in frame_idxs:
-        #     if type(f_id) == str and f_id[0] == "s":  # stereo frame
-        #         the_side = stereo_flip[side]
-        #         i = int(f_id[1:])
-        #     else:
-        #         the_side = side
-        #         i = f_id
-        #     inputs[("color", f_id, -1)] = self.get_color(folder, frame_index + i, the_side, do_flip)
-        #
-        # inputs[("frame_id", 0)] = \
-        #     f"{os.path.split(folder)[1]}+{side}+{frame_index:06d}"
+        frame_idxs = list(self.frame_idxs).copy() # target_frame_ids ?
 
         # only single
         try_flag = True # DEBUG
@@ -159,7 +153,7 @@ class InferenceV2X:
                     K_src[0, 2] += self.pad_border_aug // (2 ** scale)
                     K_src[1, 2] += self.pad_border_aug // (2 ** scale)
 
-                    inv_K_src = np.linalg.pinv(K_src)
+                    inv_K_src = np.linalg.pinv(K_src) # Shape[3,3]
 
                     inputs[("K_tgt", scale)] = torch.from_numpy(K_tgt)[..., :3, :3].to(device)
                     inputs[("K_src", scale)] = torch.from_numpy(K_src)[..., :3, :3].to(device)
@@ -179,10 +173,6 @@ class InferenceV2X:
                 inputs = self.preprocess(inputs, color_aug)
 
                 # self.to_tensor(color_aug_fn(self.pad_border_fn(img_scale)))
-
-
-
-
 
             except Exception as err:
                 pdb.set_trace()
