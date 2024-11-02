@@ -78,29 +78,25 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
         inputs["target_frame_ids"] = target_frame_ids
         outputs = model(inputs.getInputs(device)) # dict
 
-    f_id = 0
-    # for f_id in score_dict.keys():
-    pred = outputs[('color_gauss', f_id, 0)]
-    if cfg.dataset.name == "dtu":
-        gt = inputs[('color_orig_res', f_id, 0)]
-        pred = TF.resize(pred, gt.shape[-2:])
-    else:
-        gt = inputs[('color', f_id, 0)]
-    # should work in for B>1, however be careful of reduction
+    for f_id in score_dict.keys():
+        pred = outputs[('color_gauss', f_id, 0)]
+        if cfg.dataset.name == "dtu":
+            gt = inputs[('color_orig_res', f_id, 0)]
+            pred = TF.resize(pred, gt.shape[-2:])
+        else:
+            gt = inputs[('color', f_id, 0)]
 
-    pdb.set_trace()
-    out = evaluator(pred, gt)
-    if save_vis:
-        save_ply(outputs, out_dir_ply / f"{f_id}.ply", gaussians_per_pixel=model.cfg.model.gaussians_per_pixel)
-        pred = pred[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
-        gt = gt[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
-        plt.imsave(str(out_pred_dir / f"{f_id:03}.png"), pred)
-        plt.imsave(str(out_gt_dir / f"{f_id:03}.png"), gt)
+        pdb.set_trace()
+        out = evaluator(pred, gt) # should work in for B>1, however be careful of reduction
+        if save_vis:
+            save_ply(outputs, out_dir_ply / f"{f_id}.ply", gaussians_per_pixel=model.cfg.model.gaussians_per_pixel)
+            pred = pred[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
+            gt = gt[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
+            plt.imsave(str(out_pred_dir / f"{f_id:03}.png"), pred)
+            plt.imsave(str(out_gt_dir / f"{f_id:03}.png"), gt)
 
-    for metric_name, v in out.items():
-        score_dict[f_id][metric_name].append(v)
-
-
+        for metric_name, v in out.items():
+            score_dict[f_id][metric_name].append(v)
 
     metric_names = ["psnr", "ssim", "lpips"]
     score_dict_by_name = {}
