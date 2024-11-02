@@ -225,10 +225,6 @@ def train_DRGS(
 
     """
 
-
-
-
-    # TODO: create params
     lp = ModelParams(args)
     op = OptimizationParams(args)
     pp = PipelineParams(args)
@@ -241,8 +237,6 @@ def train_DRGS(
     else: args.h = h
     dataset, opt, pipe = lp.extract(args), op.extract(args), pp.extract(args)
 
-
-    # TODO: cut down points in pcd
     inf_side_info['pcd'] = cut_down_points(inf_side_info['pcd'], 1. / args.downsample)
     veh_side_info['pcd'] = cut_down_points(veh_side_info['pcd'], 1. / args.downsample)
 
@@ -357,7 +351,7 @@ def train_DRGS(
     flash3d_cfg = load_configs_from_folder('./flash3d/configs')
     flash3d_cfg.dataset.height, flash3d_cfg.dataset.width = inf_view_veh.shape # (h, w)
 
-    pdb.set_trace()
+    # pdb.set_trace()
     unidepth_pre = UniDepthExtended(flash3d_cfg)
 
     render_threshold = 1000
@@ -375,7 +369,7 @@ def train_DRGS(
             debug_flag = True
             pdb.set_trace()
 
-
+    pdb.set_trace()
     TrainTargets = [
         # 0 -> infrastructure side
         {

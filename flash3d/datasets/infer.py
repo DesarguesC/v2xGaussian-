@@ -166,9 +166,12 @@ class InferenceV2X:
                     color_aug = (lambda x: x)
 
                 # only single frame
-                inputs[("color", 0, -1)] = Image.fromarray(self.img)  # need tensor ?
-                inputs[("depth_gt", 0, 0)] = self.depth  # need tensor ?
-                inputs[("T_c2w", 0)] = self.cam2world  # need tensor ?
+                inputs[("color", 0, -1)] = Image.fromarray(self.img)
+                inputs[("depth_gt", 0, 0)] = self.depth
+                pdb.set_trace()
+                inputs["depth_sparse", 0] = np.asarray(self.pcd.points)[None,:,:] # check shape & type
+                # just use point cloud coordinates
+                inputs[("T_c2w", 0)] = self.cam2world
 
                 inputs = self.preprocess(inputs, color_aug)
 

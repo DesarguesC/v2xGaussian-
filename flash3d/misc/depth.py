@@ -1,5 +1,5 @@
 import random
-import torch
+import torch, pdb
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,6 +28,7 @@ def estimate_depth_scale(depth, sparse_depth):
     depth: [1, 1, H, W]
     sparse_depth: [N, 3]
     """
+    pdb.set_trace()
     eps = 1e-7
     device = depth.device
     sparse_depth = sparse_depth.to(device)
@@ -51,8 +52,15 @@ def estimate_depth_scale(depth, sparse_depth):
 
 
 def estimate_depth_scale_ransac(depth, sparse_depth, num_iterations=1000, sample_size=5, threshold=0.1):
+    """
+        depth: [1, 1, H, W]
+        sparse_depth: [N, 3]
+    """
+    pdb.set_trace()
     best_scale = None
     best_inliers = 0
+    if not isinstance(sparse_depth, torch.Tensor):
+        sparse_depth = torch.tensor(sparse_depth, dtype=torch.float32)
 
     device = depth.device
     sparse_depth = sparse_depth.to(device)

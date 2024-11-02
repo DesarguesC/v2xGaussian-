@@ -75,8 +75,9 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
         # if device is not None:
         #     to_device(inputs, device)
         pdb.set_trace()
-        inputs["target_frame_ids"] = target_frame_ids
-        outputs = model(inputs.getInputs(device)) # dict
+        inputs_item = inputs.getInputs(device)
+        inputs_item["target_frame_ids"] = target_frame_ids
+        outputs = model(inputs_item) # dict
 
     for f_id in score_dict.keys():
         pred = outputs[('color_gauss', f_id, 0)]

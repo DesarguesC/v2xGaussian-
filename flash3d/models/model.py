@@ -107,7 +107,7 @@ class GaussianPredictor(nn.Module):
         scale = self.cfg.model.scales[0]
         depth = outputs[('depth', scale)]
         B, _, H, W = depth.shape
-        pdb.set_trace()
+
         inv_K = outputs[("inv_K_src", scale)][None,:,:] # check: shape; dtype(32or64?）
         if self.cfg.model.gaussians_per_pixel > 1:
             inv_K = rearrange(inv_K[:,None,...].
@@ -132,8 +132,6 @@ class GaussianPredictor(nn.Module):
         cfg = self.cfg
         keyframe = 0
 
-        pdb.set_trace()
-
         for f_i in self.target_frame_ids(inputs):
             if ("T_c2w", f_i) not in inputs:
                 continue
@@ -157,9 +155,9 @@ class GaussianPredictor(nn.Module):
             else:
                 outputs[("cam_T_cam", f_i, 0)] = T_0_inv @ T_i
 
-
+        pdb.set_trace()
         if cfg.dataset.scale_pose_by_depth:
-            B = cfg.data_loader.batch_size
+            B = cfg.data_loader.batch_size # = 1
             depth_padded = outputs[("depth", 0)].detach()
             # only use the depth in the unpadded image for scale estimation
             depth = depth_padded[:, :, 
@@ -181,7 +179,7 @@ class GaussianPredictor(nn.Module):
                 scales.append(scale)
             scale = torch.tensor(scales, device=depth.device).unsqueeze(dim=1)
             outputs[("depth_scale", 0)] = scale
-
+            # TODO: KeyError -> ('cam_T_cam', 0, 's0') | if ('cam_T_cam', 0, '0') exists ?
             for f_i in self.target_frame_ids(inputs):
                 T = outputs[("cam_T_cam", 0, f_i)]
                 T[:, :3, 3] = T[:, :3, 3] * scale

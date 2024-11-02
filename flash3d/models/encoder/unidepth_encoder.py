@@ -95,7 +95,6 @@ class UniDepthExtended(nn.Module):
             gauss_outs[key] = rearrange(gauss_outs[key], 'b n ... -> (b n) ...')
         outputs_gauss |= gauss_outs
 
-        pdb.set_trace()
         for (k,v) in outputs_gauss.items(): # TODO: check type - float32 ? float64 ?
             outputs_gauss[k] = v.to(torch.float32)
 
