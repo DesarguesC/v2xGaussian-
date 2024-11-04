@@ -75,11 +75,11 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
     with torch.no_grad():
         # if device is not None:
         #     to_device(inputs, device)
-        pdb.set_trace()
+
         inputs_item = inputs.getInputs(device)
         inputs_item["target_frame_ids"] = target_frame_ids
         outputs = model(inputs_item) # dict
-
+    # pdb.set_trace()
     for f_id in score_dict.keys():
         pred = outputs[('color_gauss', f_id, 0)]
         if cfg.dataset.name == "dtu":

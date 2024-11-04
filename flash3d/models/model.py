@@ -98,7 +98,7 @@ class GaussianPredictor(nn.Module):
         if cfg.model.gaussian_rendering:
             self.process_gt_poses(inputs, outputs) # DONE
             self.render_images(inputs, outputs)
-        pdb.set_trace() # check the "outputs.keys()"
+        # pdb.set_trace() # check the "outputs.keys()"
         # outputs.keys() -> gauss_scaling, gauss_offset, ("color_gauss", frame_id, 0)
         return outputs
     
@@ -256,7 +256,7 @@ class GaussianPredictor(nn.Module):
 
                     pc = {k: v[b].contiguous().float() for k, v in point_clouds.items()}
 
-                    pdb.set_trace()
+                    # pdb.set_trace()
                     out = render_predicted(
                         cfg,
                         pc,
@@ -275,7 +275,7 @@ class GaussianPredictor(nn.Module):
                     if "depth" in out:
                         depths.append(out["depth"])
 
-                pdb.set_trace()
+                # pdb.set_trace()
                 rbgs = torch.stack(rgbs, dim=0)
                 outputs[("color_gauss", frame_id, scale)] = rbgs
 

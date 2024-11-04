@@ -32,7 +32,8 @@ class Evaluator(nn.Module):
         return self.metrics.keys()
     
     def forward(self, img_pred, img_gt):
-        b, c, h, w = img_gt.shape
+        pdb.set_trace()
+        b, c, h, w = img_gt.shape # img_gt: dict ❎
 
         if self.crop_border:
             margin = 0.05
