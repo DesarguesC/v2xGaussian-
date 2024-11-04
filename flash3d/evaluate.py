@@ -69,6 +69,7 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
     for fid in all_frames:
         score_dict[fid] = {"ssim": [], "psnr": [], "lpips": [], "name": fid}
 
+    pdb.set_trace()
     inputs = InferenceV2X(split, cfg, dair_info, view_type=view_type)
 
     with torch.no_grad():

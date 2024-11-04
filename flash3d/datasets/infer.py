@@ -11,26 +11,47 @@ from flash3d.datasets.data import pil_loader
 
 class InferenceV2X:
     def __init__(self, split, cfg, dair_info, num_scales: int = 1, view_type: str = 'inf'):
+
         self.is_train = True
         self.num_scales = num_scales
         self.cfg = cfg
         self.type = view_type
+        self.anti_type = 'veh' if view_type=='inf' else 'inf'
+        # pdb.set_trace()
         # dair_info: drgs_util.scene.dataset_renders.Dair_v2x_Info[class]
-        self.img = getattr(dair_info, f'{view_type}_rgb') # np.ndarray
-        self.image_size = self.img.shape[:-1]
+        self.img = {
+            '0': getattr(dair_info, f'{view_type}_rgb'),
+            's0': getattr(dair_info, f'{self.anti_type}_rgb')
+        } # np.ndarray
+        self.image_size = self.img['0'].shape[:-1]
         # only RGB image here, add depth prior after
-        self.pcd = getattr(dair_info, f'{view_type}_pcd') # basic point cloud type
-        self.depth = getattr(dair_info, f'{view_type}_depth')
-        self.cam2world = np.linalg.inv(getattr(dair_info, f'world2cam_{view_type}'))
+        self.pcd = {
+            '0': getattr(dair_info, f'{view_type}_pcd'),
+            's0': getattr(dair_info, f'{self.anti_type}_pcd')
+        } # basic point cloud type
+        self.depth = {
+            '0': getattr(dair_info, f'{view_type}_depth'),
+            's0': getattr(dair_info, f'{self.anti_type}_depth')
+        }
+        self.cam2world = {
+            '0': np.linalg.inv(getattr(dair_info, f'world2cam_{view_type}')),
+            's0': np.linalg.inv(getattr(dair_info, f'world2cam_{self.anti_type}'))
+        }
         """
             dict{'fg':..., 'bg':..., 'panoptic':...}
         """
         # pdb.set_trace()
-        self.K = getattr(dair_info, f'{view_type}_cam_K') # check the shape of 'cam_K'
+        self.K = {
+            '0': getattr(dair_info, f'{view_type}_cam_K'),
+            's0': getattr(dair_info, f'{self.anti_type}_cam_K')
+        } # check the shape of 'cam_K'
         """
             dict{'height':..., 'weight':..., 'cam_K': np.ndarray}
         """
-        self.intrinsics = getattr(dair_info, f'normalization_{view_type}')["radius"]
+        self.intrinsics = {
+            '0': getattr(dair_info, f'normalization_{view_type}')["radius"],
+            's0': getattr(dair_info, f'normalization_{self.anti_type}')["radius"]
+        }
 
         self.pad_border_fn = T.Pad((self.cfg.dataset.pad_border_aug, self.cfg.dataset.pad_border_aug))
         self.interp = Image.LANCZOS
@@ -62,9 +83,10 @@ class InferenceV2X:
             # SfMLearner frames, eg. [0, -1, 1]
             frame_idxs = cfg.model.frame_ids.copy()
 
+        # pdb.set_trace()
         self.frame_idxs = frame_idxs
-        frame_idxs = [0, 1, 2] # as written in flash3d/configs/model/gaussian.yaml
-        self.frame_idxs = frame_idxs
+        # frame_idxs = [0, 1, 2] # as written in flash3d/configs/model/gaussian.yaml
+        # self.frame_idxs = frame_idxs
 
         try:
             self.brightness = (0.8, 1.2)
@@ -114,7 +136,12 @@ class InferenceV2X:
                     inputs[(n + "_aug", im, i)] = self.to_tensor(self.pad_border_fn(color_aug(f))).to(torch.float32).to(device)
                 else:
                     inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f)).to(torch.float32).to(device)
-                # print(f'inputs_item.shape = {inputs[(n + "_aug", im, i)].shape}')
+
+                if len(inputs[(n + "_aug", im, i)].shape) < 4 and inputs[(n + "_aug", im, i)].shape[0] == 3:
+                    inputs[(n + "_aug", im, i)] = inputs[(n + "_aug", im, i)][None,:,:,:]
+                    inputs[(n, im, i)] = inputs[(n, im, i)][None, :, :, :]
+                    print(inputs[(n + "_aug", im, i)].shape)
+                print(f'{inputs[(n + "_aug", im, i)].shape}, {inputs[(n, im, i)].shape}')
                 # if len(inputs[(n + "_aug", im, i)].shape) < 3:
                 #     pdb.set_trace()
                 #     inputs[(n + "_aug", im, i)] = inputs[(n + "_aug", im, i)][None,:,:] # will be turned to float64 again?
@@ -132,6 +159,8 @@ class InferenceV2X:
 
         frame_idxs = list(self.frame_idxs).copy() # target_frame_ids ?
 
+        # TODO: inputs[("frame_id", 0)] = f"{os.path.split(folder)[1]}+{side}+{frame_index:06d}" 【路径】
+
         # only single
         try_flag = True # DEBUG
         while try_flag:
@@ -140,7 +169,7 @@ class InferenceV2X:
                 # self.num_scales = 1
                 for scale in range(self.num_scales):
                     # pdb.set_trace()
-                    K = self.K['cam_K']
+                    K = self.K['0']['cam_K']
                     K_tgt = K.copy()
                     K_src = K.copy()
 
@@ -155,9 +184,9 @@ class InferenceV2X:
 
                     inv_K_src = np.linalg.pinv(K_src) # Shape[3,3]
 
-                    inputs[("K_tgt", scale)] = torch.from_numpy(K_tgt)[..., :3, :3].to(device)
-                    inputs[("K_src", scale)] = torch.from_numpy(K_src)[..., :3, :3].to(device)
-                    inputs[("inv_K_src", scale)] = torch.from_numpy(inv_K_src)[..., :3, :3].to(device)
+                    inputs[("K_tgt", scale)] = torch.from_numpy(K_tgt)[None,:,:].to(device)
+                    inputs[("K_src", scale)] = torch.from_numpy(K_src)[None,:,:].to(device)
+                    inputs[("inv_K_src", scale)] = torch.from_numpy(inv_K_src)[None,:,:].to(device)
 
                 if do_color_aug:
                     raise NotImplementedError
@@ -166,16 +195,17 @@ class InferenceV2X:
                     color_aug = (lambda x: x)
 
                 # only single frame
-                inputs[("color", 0, -1)] = Image.fromarray(self.img)
-                inputs[("depth_gt", 0, 0)] = self.depth
-                pdb.set_trace()
-                inputs["depth_sparse", 0] = np.asarray(self.pcd.points)[None,:,:] # check shape & type
-                # just use point cloud coordinates
-                inputs[("T_c2w", 0)] = self.cam2world
+                for f_id in frame_idxs:
+                    inputs[("color", f_id, -1)] = Image.fromarray(self.img[str(f_id)])
+                    inputs[("depth_gt", f_id, 0)] = self.depth[str(f_id)]
+                    # pdb.set_trace()
+                    inputs["depth_sparse", f_id] = np.asarray(self.pcd[str(f_id)].points)[None,:,:] # check shape & type
+                    # just use point cloud coordinates
+                    inputs[("T_c2w", f_id)] = torch.tensor(self.cam2world[str(f_id)][None,:,:], dtype=torch.float32).to(device)
 
                 inputs = self.preprocess(inputs, color_aug)
 
-                # self.to_tensor(color_aug_fn(self.pad_border_fn(img_scale)))
+                    # self.to_tensor(color_aug_fn(self.pad_border_fn(img_scale)))
 
             except Exception as err:
                 pdb.set_trace()

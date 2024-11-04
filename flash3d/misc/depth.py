@@ -57,7 +57,7 @@ def estimate_depth_scale_ransac(depth, sparse_depth, num_iterations=1000, sample
         sparse_depth: [N, 3]
     """
     pdb.set_trace()
-    best_scale = None
+    best_scale = None # press "c"+Enter
     best_inliers = 0
     if not isinstance(sparse_depth, torch.Tensor):
         sparse_depth = torch.tensor(sparse_depth, dtype=torch.float32)

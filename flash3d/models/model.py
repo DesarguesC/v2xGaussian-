@@ -96,10 +96,10 @@ class GaussianPredictor(nn.Module):
         self.compute_gauss_means(inputs, outputs)
 
         if cfg.model.gaussian_rendering:
-            self.process_gt_poses(inputs, outputs)
+            self.process_gt_poses(inputs, outputs) # DONE
             self.render_images(inputs, outputs)
         pdb.set_trace() # check the "outputs.keys()"
-        # outputs.kesy() -> gauss_scaling, gauss_offset, ("color_gauss", frame_id, 0)
+        # outputs.keys() -> gauss_scaling, gauss_offset, ("color_gauss", frame_id, 0)
         return outputs
     
     def compute_gauss_means(self, inputs, outputs):
@@ -108,7 +108,7 @@ class GaussianPredictor(nn.Module):
         depth = outputs[('depth', scale)]
         B, _, H, W = depth.shape
 
-        inv_K = outputs[("inv_K_src", scale)][None,:,:] # check: shape; dtype(32or64?）
+        inv_K = outputs[("inv_K_src", scale)] # check: shape; dtype(32or64?）
         if self.cfg.model.gaussians_per_pixel > 1:
             inv_K = rearrange(inv_K[:,None,...].
                               repeat(1, self.cfg.model.gaussians_per_pixel, 1, 1),
@@ -131,7 +131,7 @@ class GaussianPredictor(nn.Module):
     def process_gt_poses(self, inputs, outputs):
         cfg = self.cfg
         keyframe = 0
-
+        pdb.set_trace()
         for f_i in self.target_frame_ids(inputs):
             if ("T_c2w", f_i) not in inputs:
                 continue
@@ -156,7 +156,7 @@ class GaussianPredictor(nn.Module):
                 outputs[("cam_T_cam", f_i, 0)] = T_0_inv @ T_i
 
         pdb.set_trace()
-        if cfg.dataset.scale_pose_by_depth:
+        if cfg.dataset.scale_pose_by_depth: # press "c"+Enter
             B = cfg.data_loader.batch_size # = 1
             depth_padded = outputs[("depth", 0)].detach()
             # only use the depth in the unpadded image for scale estimation
@@ -180,6 +180,7 @@ class GaussianPredictor(nn.Module):
             scale = torch.tensor(scales, device=depth.device).unsqueeze(dim=1)
             outputs[("depth_scale", 0)] = scale
             # TODO: KeyError -> ('cam_T_cam', 0, 's0') | if ('cam_T_cam', 0, '0') exists ?
+            pdb.set_trace()
             for f_i in self.target_frame_ids(inputs):
                 T = outputs[("cam_T_cam", 0, f_i)]
                 T[:, :3, 3] = T[:, :3, 3] * scale
@@ -188,7 +189,7 @@ class GaussianPredictor(nn.Module):
                 T[:, :3, 3] = T[:, :3, 3] * scale
                 outputs[("cam_T_cam", f_i, 0)] = T
 
-    def render_images(self, inputs, outputs):
+    def render_images(self, inputs, outputs, use_gt_loss=True):
         """Generate the warped (reprojected) color images for a minibatch.
         Generated images are saved into the `outputs` dictionary.
         """
@@ -210,7 +211,7 @@ class GaussianPredictor(nn.Module):
                         continue
                     T = outputs[('cam_T_cam', 0, frame_id)]
                 
-                if cfg.train.use_gt_poses:
+                if use_gt_loss:
                     pos = pos_input_frame
                 else:
                     P = rearrange(T[:, :3, :][:, None, ...].repeat(1, self.cfg.model.gaussians_per_pixel, 1, 1),
@@ -229,7 +230,6 @@ class GaussianPredictor(nn.Module):
 
                 rgbs = []
                 depths = []
-
                 for b in range(B):
                     # get camera projection matrix
                     if cfg.dataset.name in ["kitti", "nyuv2", "waymo"]:
@@ -256,6 +256,7 @@ class GaussianPredictor(nn.Module):
 
                     pc = {k: v[b].contiguous().float() for k, v in point_clouds.items()}
 
+                    pdb.set_trace()
                     out = render_predicted(
                         cfg,
                         pc,
@@ -268,11 +269,13 @@ class GaussianPredictor(nn.Module):
                         bg_color,
                         cfg.model.max_sh_degree
                     )
+                    # out.keys(): ['render', 'viewspace_points', 'visibility_filter', 'radii', 'depth', 'opacity']
                     rgb = out["render"]
                     rgbs.append(rgb)
                     if "depth" in out:
                         depths.append(out["depth"])
-                
+
+                pdb.set_trace()
                 rbgs = torch.stack(rgbs, dim=0)
                 outputs[("color_gauss", frame_id, scale)] = rbgs
 

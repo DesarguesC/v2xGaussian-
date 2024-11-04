@@ -70,7 +70,8 @@ def render_predicted(cfg,
                      img_size, 
                      bg_color : torch.Tensor, 
                      max_sh_degree,
-                     scaling_modifier = 1.0, 
+                     scaling_modifier = 1.0,
+                     renderer_w_pose=True,
                      override_color = None):
     """
     Render the scene. 
@@ -79,7 +80,7 @@ def render_predicted(cfg,
     """
  
     # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
-    screenspace_points = torch.zeros_like(pc["xyz"], dtype=pc["xyz"].dtype, requires_grad=True, device="cuda") + 0
+    screenspace_points = torch.zeros_like(pc["xyz"], dtype=pc["xyz"].dtype, requires_grad=True, device="cuda") # + 0
     try:
         screenspace_points.retain_grad()
     except:
@@ -105,7 +106,7 @@ def render_predicted(cfg,
         "prefiltered": False,
         "debug": False
     }
-    if cfg.model.renderer_w_pose:
+    if renderer_w_pose:
         kvargs |= {"projmatrix_raw": proj_mtrx}
 
     # Set up rasterization configuration
