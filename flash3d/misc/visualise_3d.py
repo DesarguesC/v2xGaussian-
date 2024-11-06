@@ -156,7 +156,7 @@ def export_ply(
         scales.log().detach().cpu().numpy(),
         rotations,
     )
-    pdb.set_trace()
+    # pdb.set_trace()
     attributes = np.concatenate(attributes, axis=1)
     elements[:] = list(map(tuple, attributes))
     # if not os.path.exists(path): os.mkdir(path)
@@ -171,7 +171,7 @@ def save_ply(outputs, path, gaussians_per_pixel=3):
     opacities = rearrange(outputs["gauss_opacity"], "(b v) c h w -> b (v h w) c", v=gaussians_per_pixel)[0]
     harmonics = rearrange(outputs["gauss_features_dc"], "(b v) c h w -> b (v h w) c", v=gaussians_per_pixel)[0]
 
-    pdb.set_trace()
+    # pdb.set_trace()
     export_ply(
         means,
         scales,

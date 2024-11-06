@@ -131,7 +131,7 @@ class GaussianPredictor(nn.Module):
     def process_gt_poses(self, inputs, outputs):
         cfg = self.cfg
         keyframe = 0
-        pdb.set_trace()
+        # pdb.set_trace()
         for f_i in self.target_frame_ids(inputs):
             if ("T_c2w", f_i) not in inputs:
                 continue
@@ -155,7 +155,7 @@ class GaussianPredictor(nn.Module):
             else:
                 outputs[("cam_T_cam", f_i, 0)] = T_0_inv @ T_i
 
-        pdb.set_trace()
+        # pdb.set_trace()
         if cfg.dataset.scale_pose_by_depth: # press "c"+Enter
             B = cfg.data_loader.batch_size # = 1
             depth_padded = outputs[("depth", 0)].detach()
@@ -180,7 +180,7 @@ class GaussianPredictor(nn.Module):
             scale = torch.tensor(scales, device=depth.device).unsqueeze(dim=1)
             outputs[("depth_scale", 0)] = scale
             # TODO: KeyError -> ('cam_T_cam', 0, 's0') | if ('cam_T_cam', 0, '0') exists ?
-            pdb.set_trace()
+            # pdb.set_trace()
             for f_i in self.target_frame_ids(inputs):
                 T = outputs[("cam_T_cam", 0, f_i)]
                 T[:, :3, 3] = T[:, :3, 3] * scale

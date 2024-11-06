@@ -88,7 +88,7 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
         else:
             gt = inputs_item[('color', f_id, 0)]
 
-        pdb.set_trace()
+        # pdb.set_trace()
         out = evaluator(pred, gt) # should work in for B>1, however be careful of reduction
         if save_vis:
             save_ply(outputs, f"{out_dir_ply}/{f_id}.ply", gaussians_per_pixel=model.cfg.model.gaussians_per_pixel)
