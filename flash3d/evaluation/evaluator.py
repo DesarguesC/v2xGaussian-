@@ -1,5 +1,5 @@
 import math
-import torch
+import torch, pdb
 import torch.nn as nn
 
 from torchmetrics.image import \
@@ -32,8 +32,7 @@ class Evaluator(nn.Module):
         return self.metrics.keys()
     
     def forward(self, img_pred, img_gt):
-        pdb.set_trace()
-        b, c, h, w = img_gt.shape # img_gt: dict ❎
+        b, c, h, w = img_gt.shape
 
         if self.crop_border:
             margin = 0.05

@@ -1,3 +1,6 @@
+import os.path
+import pdb
+
 import torch
 import numpy as np
 from pathlib import Path
@@ -97,7 +100,7 @@ def export_ply(
     rotations: Float[Tensor, "gaussian 4"],
     harmonics: Float[Tensor, "gaussian 3 d_sh"],
     opacities: Float[Tensor, "gaussian"],
-    path: Path,
+    path: str,
 ):
     # Shift the scene so that the median Gaussian is at the origin.
     means = means - means.median(dim=0).values
@@ -153,9 +156,11 @@ def export_ply(
         scales.log().detach().cpu().numpy(),
         rotations,
     )
+    pdb.set_trace()
     attributes = np.concatenate(attributes, axis=1)
     elements[:] = list(map(tuple, attributes))
-    path.parent.mkdir(exist_ok=True, parents=True)
+    # if not os.path.exists(path): os.mkdir(path)
+    # path.parent.mkdir(exist_ok=True, parents=True)
     PlyData([PlyElement.describe(elements, "vertex")]).write(path)
 
 
@@ -166,6 +171,7 @@ def save_ply(outputs, path, gaussians_per_pixel=3):
     opacities = rearrange(outputs["gauss_opacity"], "(b v) c h w -> b (v h w) c", v=gaussians_per_pixel)[0]
     harmonics = rearrange(outputs["gauss_features_dc"], "(b v) c h w -> b (v h w) c", v=gaussians_per_pixel)[0]
 
+    pdb.set_trace()
     export_ply(
         means,
         scales,

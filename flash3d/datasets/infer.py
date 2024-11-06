@@ -205,6 +205,10 @@ class InferenceV2X:
 
                 inputs = self.preprocess(inputs, color_aug)
 
+                for i in frame_idxs:
+                    del inputs[("color", i, -1)]
+                    del inputs[("color_aug", i, -1)]
+
                     # self.to_tensor(color_aug_fn(self.pad_border_fn(img_scale)))
 
             except Exception as err:
