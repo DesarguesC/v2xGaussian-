@@ -7,7 +7,7 @@ __pycache__/
 .Ds_Store
 *.zip
 
-
+lama/models
 test_out/
 checkpoints/
 # static-crfill/  # object removed images
@@ -15,9 +15,10 @@ checkpoints/
 # static/
 memory_test.txt
 *.ipynb
-models/
+
 
 submodules/diff-gaussian-rasterization/
+submodules/diff-gaussian-rasterization-w-pose/
 *.dump
 *.csv
 planner-curve.jpg

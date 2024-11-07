@@ -5,9 +5,13 @@ import os, sys, uuid, cv2, torch, torchvision
 from tqdm import tqdm
 import open3d as o3d
 from random import randint
+from omegaconf import OmegaConf, DictConfig
 from basicsr.utils import tensor2img, img2tensor
 from lidar2dep.data.process import colorize
 from PIL import Image
+
+from flash3d.models.encoder.unidepth_encoder import UniDepthExtended
+from flash3d.evaluate import v2x_inference
 
 from drgs_utils.gaussian_renderer import render, network_gui
 from drgs_utils.scene import GaussianModel
@@ -82,6 +86,35 @@ def prepare_output_and_logger(args):
     else:
         print("Tensorboard not available: not logging progress")
     return tb_writer
+
+
+def load_configs_from_folder(folder_path: str) -> DictConfig:
+    combined_config = OmegaConf.create()
+
+    for root, _, files in os.walk(folder_path):
+        relative_path = os.path.relpath(root, folder_path)
+        current_config = OmegaConf.create()
+
+        for file in files:
+            if file.endswith(('.yaml', '.yml', '.json')):
+                file_path = os.path.join(root, file)
+                config = OmegaConf.load(file_path)
+                current_config = OmegaConf.merge(current_config, config)
+
+        # Split relative path into parts and create nested structure
+        if relative_path != ".":
+            parts = relative_path.split(os.sep)
+            nested_config = current_config
+            for part in reversed(parts):
+                nested_config = OmegaConf.create({part: nested_config})
+            combined_config = OmegaConf.merge(combined_config, nested_config)
+        else:
+            combined_config = OmegaConf.merge(combined_config, current_config)
+
+    # Ensure the combined configuration is returned as a DictConfig
+    return OmegaConf.create(combined_config)
+
+
 
 
 
@@ -192,10 +225,6 @@ def train_DRGS(
 
     """
 
-
-
-
-    # TODO: create params
     lp = ModelParams(args)
     op = OptimizationParams(args)
     pp = PipelineParams(args)
@@ -208,8 +237,6 @@ def train_DRGS(
     else: args.h = h
     dataset, opt, pipe = lp.extract(args), op.extract(args), pp.extract(args)
 
-
-    # TODO: cut down points in pcd
     inf_side_info['pcd'] = cut_down_points(inf_side_info['pcd'], 1. / args.downsample)
     veh_side_info['pcd'] = cut_down_points(veh_side_info['pcd'], 1. / args.downsample)
 
@@ -321,9 +348,28 @@ def train_DRGS(
 
     iter_start = torch.cuda.Event(enable_timing=True)
     iter_end = torch.cuda.Event(enable_timing=True)
+    flash3d_cfg = load_configs_from_folder('./flash3d/configs')
+    flash3d_cfg.dataset.height, flash3d_cfg.dataset.width = inf_view_veh.shape # (h, w)
+
+    # pdb.set_trace()
+    unidepth_pre = UniDepthExtended(flash3d_cfg)
 
     render_threshold = 1000
+    pdb.set_trace()
+    debug_flag = True
+    while debug_flag:
+        debug_flag = False
+        try:
+            score_dict_inf, gaussian_outputs_inf = v2x_inference(args, dair_info, flash3d_cfg, split='test', view_type='inf', unidepth_model=unidepth_pre, save_result=True, return_GS=True)
+            score_dict_veh, gaussian_outputs_veh = v2x_inference(args, dair_info, flash3d_cfg, split='test', view_type='veh', unidepth_model=unidepth_pre, save_result=True, return_GS=True)
+            # net_image = render(custom_cam, gaussian, pipe, background, scaling_modifer)["render"]
+            # TODO: 先用Flash3D进行推理 | 用Flash3D产生的GS结果作初始？
+        except Exception as err:
+            print(f'err = {err}')
+            debug_flag = True
+            pdb.set_trace()
 
+    pdb.set_trace()
     TrainTargets = [
         # 0 -> infrastructure side
         {
@@ -360,6 +406,9 @@ def train_DRGS(
     execute_flag = True
 
     iteration = first_iter
+
+
+
     while execute_flag:
 
         pdb.set_trace()

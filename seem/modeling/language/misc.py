@@ -4,7 +4,7 @@ import torch
 import nltk
 import numpy as np
 
-from utils.constants import IMAGENET_DEFAULT_TEMPLATES
+from seem.utils.constants import IMAGENET_DEFAULT_TEMPLATES
 
 nltk.download('punkt', quiet=True)
 nltk.download('averaged_perceptron_tagger', quiet=True)

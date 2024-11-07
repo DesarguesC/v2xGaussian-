@@ -21,7 +21,10 @@ path_list = [
     './debug/pred_dep_1',
     './debug/pred_dep_1/depth_image',
     './debug/side-pred-0/view.jpg',
-    './debug/side-pred-1/view.jpg'
+    './debug/side-pred-1/view.jpg',
+
+    '../dair-test/weights/flash3d/gt',
+    '../dair-test/weights/flash3d/pred'
 ]
 
 
@@ -61,9 +64,16 @@ def load_image():
         Image.open(os.path.join(path_list[3], 'colored_pred_all.jpg')), \
         Image.open(os.path.join(path_list[3], 'pred.jpg'))
 
+    flash3d_gt_f_0, flash3d_gt_f_s0 = Image.open(os.path.join(path_list[6], '000.png')), \
+        Image.open(os.path.join(path_list[6], 's00.png'))
+    flash3d_pred_f_0, flash3d_pred_f_s0 = Image.open(os.path.join(path_list[7], '000.png')), \
+        Image.open(os.path.join(path_list[7], 's00.png'))
+
     side_view_1, side_view_2 = Image.open(path_list[4]), Image.open(path_list[5])
 
-    return (rgb1, mask1, dep_1_1, dep_1_2, dep_1_3, rgb2, mask2, dep_2_1, dep_2_2, dep_2_3, side_view_1, side_view_2)
+    return (rgb1, mask1, dep_1_1, dep_1_2, dep_1_3, rgb2, mask2, \
+                dep_2_1, dep_2_2, dep_2_3, side_view_1, side_view_2,\
+            flash3d_gt_f_0, flash3d_gt_f_s0, flash3d_pred_f_0, flash3d_pred_f_s0)
 
 def main():
     with gr.Blocks() as demo:
@@ -88,12 +98,21 @@ def main():
             side_view_1 = gr.Image(label=path_list[4])
             side_view_2 = gr.Image(label=path_list[5])
 
+        with gr.Row():
+            flash3d_gt_f_0, flash3d_pred_f_0 = gr.Image(label=os.path.join(path_list[6], '000.png')), \
+                gr.Image(label=os.path.join(path_list[7], '000.png'))
+
+        with gr.Row():
+            flash3d_gt_f_s0, flash3d_pred_f_s0 = gr.Image(label=os.path.join(path_list[6], 's00.png')), \
+                gr.Image(label=os.path.join(path_list[7], 's00.png'))
+
         button.click(fn=load_image,
                      inputs=[],
                      outputs=[
                          rgb1, mask1, dep_1_1, dep_1_2, dep_1_3,
                          rgb2, mask2, dep_2_1, dep_2_2, dep_2_3,
-                         side_view_1, side_view_2
+                         side_view_1, side_view_2,
+                         flash3d_gt_f_0, flash3d_gt_f_s0, flash3d_pred_f_0, flash3d_pred_f_s0
                      ])
 
     # 启动 Gradio 界面

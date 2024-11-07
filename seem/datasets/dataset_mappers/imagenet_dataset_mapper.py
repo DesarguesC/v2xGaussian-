@@ -15,7 +15,7 @@ import numpy as np
 import torch
 from torchvision import transforms
 
-from modeling.utils import configurable
+from seem.modeling.utils import configurable
 
 __all__ = ["ImageNetDatasetMapper"]
 

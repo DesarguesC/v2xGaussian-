@@ -3,7 +3,7 @@ rich
 ninja
 numpy==1.23.1 # original: 1.24.4
 Pillow==9.4.0
-pytorch_lightning==1.5.9
+pytorch_lightning==1.8.6
 pandas
 scipy
 scikit-learn
@@ -21,6 +21,8 @@ dearpygui
 # for stable-diffusion
 huggingface_hub
 diffusers
+xformers==0.0.16
+
 accelerate
 transformers
 # for dmtet and mesh export
@@ -39,13 +41,24 @@ h5py
 open3d
 anthropic
 
-timm==0.4.12
+timm
 albumentations==0.4.3
 webdataset==0.2.35
 
 # drgs
 plyfile==1.0.3
-pytorch3d==0.7.5
+
+
+# flash3d
+hydra-core
+jaxtyping
+neptune
+pytubefix
+mpi4py
+wandb
+
+
+
 
 
 # As in README.md

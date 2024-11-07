@@ -1,7 +1,8 @@
 ## Environment
 manually installation
 ```bash
-conda create -n v2x python=3.9.17
+conda create -n v2x python=3.10.15
+conda activate v2x
 pip install torch==1.13.1+cu116 torchvision==0.14.1+cu116 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu116
 ```
 
@@ -9,10 +10,10 @@ Packages from GitHub
 ```bash
 pip install git+https://github.com/NVlabs/nvdiffrast/ && \
 pip install git+https://github.com/ashawkey/kiuikit.git && \
-pip install git+https://github.com/bytedance/MVDream
+pip install git+https://github.com/bytedance/MVDream && \
 pip install git+https://github.com/bytedance/ImageDream/#subdirectory=extern/ImageDream && \
 pip install git+https://github.com/MaureenZOU/detectron2-xyz.git && \
-pip install -e git+https://github.com/DesarguesC/kornia@master#egg=kornia && \
+pip install git+https://github.com/DesarguesC/kornia@master#egg=kornia && \
 pip install git+https://github.com/facebookresearch/pytorch3d.git
 ```
 
@@ -39,12 +40,18 @@ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation -
 # otherwise
 pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./ 
 
+# If failed, you can try:
+pip install -v --disable-pip-version-check --no-build-isolation --no-cache-dir ./
+
+# mmcv & mmseg
+pip install mmcv-full==1.4.4 mmsegmentation==0.22.1
+
 # build DCN module
 cd lidar2dep/model/deformconv && python setup.py build install && cd ../../../
 #mmcv
 git clone https://github.com/open-mmlab/mmcv.git
 cd mmcv
-pip install -v -e .
+pip install -v -e . # if version err occurred, change it to mmcv==2.0.0
 # mmseg
 cd ../ && git clone -b main https://github.com/open-mmlab/mmsegmentation.git
 cd mmsegmentation
@@ -55,6 +62,11 @@ pip install -v -e .
 ```bash
 pip install -e submodules/diff-gaussian-rasterization-depth-acc
 ```
+## Flash3D
+```bash
+pip install diff-gaussian-rasterization @ git+https://github.com/eldar/diff-gaussian-rasterization-w-pose@main
+```
+
 
 
 Note that when install "apex", there is probably encountered with an error "cannot import name 'container_abcs' from 'torch._six'", 

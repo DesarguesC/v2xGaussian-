@@ -12,7 +12,7 @@ from detectron2.data import transforms as T
 from detectron2.projects.point_rend import ColorAugSSDTransform
 from detectron2.structures import BitMasks, Instances
 
-from modeling.utils import configurable
+from seem.modeling.utils import configurable
 
 __all__ = ["MaskFormerSemanticDatasetMapper"]
 
