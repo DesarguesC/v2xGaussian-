@@ -16,6 +16,7 @@ checkpoints/
 memory_test.txt
 *.ipynb
 
+metrics_nyuv2_test.json
 
 submodules/diff-gaussian-rasterization/
 submodules/diff-gaussian-rasterization-w-pose/
