@@ -3,7 +3,8 @@ import json
 import hydra
 import torch
 import numpy as np
-
+from PIL import Image
+from lidar2dep.data.process import colorize
 from tqdm import tqdm
 from pathlib import Path
 from omegaconf import DictConfig
@@ -69,19 +70,17 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
     for fid in all_frames:
         score_dict[fid] = {"ssim": [], "psnr": [], "lpips": [], "name": fid}
 
-    # pdb.set_trace()
+
     inputs = InferenceV2X(split, cfg, dair_info, view_type=view_type)
-
-    with torch.no_grad():
-        # if device is not None:
-        #     to_device(inputs, device)
-
+    # pdb.set_trace()
+    with torch.no_grad(): # 查看同视角下的outputs[dict]
         inputs_item = inputs.getInputs(device)
         inputs_item["target_frame_ids"] = target_frame_ids
-        outputs = model(inputs_item) # dict
+        outputs = model(inputs_item) # dict ->
     # pdb.set_trace()
-    for f_id in score_dict.keys():
-        pred = outputs[('color_gauss', f_id, 0)]
+    for f_id in score_dict.keys(): # score_dict.keys() = ['s0'] | 再看下'0'的
+        pred = outputs[('color_gauss', f_id, 0)] # another_view -> [1, 3, H, W]
+        pred_depth = outputs[('depth_gauss', f_id, 0)] # -> [1, 1, H, W]
         if cfg.dataset.name == "dtu":
             gt = inputs_item[('color_orig_res', f_id, 0)]
             pred = TF.resize(pred, gt.shape[-2:])
@@ -93,12 +92,34 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
         if save_vis:
             save_ply(outputs, f"{out_dir_ply}/{f_id}.ply", gaussians_per_pixel=model.cfg.model.gaussians_per_pixel)
             pred = pred[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
+            pred_depth = colorize(pred_depth)
             gt = gt[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
             plt.imsave(f"{out_pred_dir}/{f_id:03}.png", pred)
+            plt.imsave(f"{out_pred_dir}/{f_id:03}-depth.png", pred_depth)
             plt.imsave(f"{out_gt_dir}/{f_id:03}.png", gt)
 
         for metric_name, v in out.items():
             score_dict[f_id][metric_name].append(v)
+
+    f_id = 0
+    pred = outputs[('color_gauss', f_id, 0)]  # another_view
+    pred_depth = outputs[('depth_gauss', f_id, 0)]
+    if cfg.dataset.name == "dtu":
+        gt = inputs_item[('color_orig_res', f_id, 0)]
+        pred = TF.resize(pred, gt.shape[-2:])
+    else:
+        gt = inputs_item[('color', f_id, 0)]
+    if save_vis:
+        pred = pred[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
+        pred_depth = colorize(pred_depth)
+        gt = gt[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
+        plt.imsave(f"{out_pred_dir}/{f_id:03}_ori_view.png", pred)
+        plt.imsave(f"{out_pred_dir}/{f_id:03}_ori_view-depth.png", pred_depth)
+
+
+
+
+
 
     metric_names = ["psnr", "ssim", "lpips"]
     score_dict_by_name = {}
@@ -134,7 +155,7 @@ def v2x_inference(opt, dair_info, cfg: DictConfig, split='test', view_type: str 
     cfg.data_loader.num_workers = 1
     # TODO: for GaussianPredictor loading
 
-    pdb.set_trace()
+    # pdb.set_trace()
     model = GaussianPredictor(cfg, unidepth_model=unidepth_model)
 
     device = torch.device("cuda:0")
@@ -150,9 +171,9 @@ def v2x_inference(opt, dair_info, cfg: DictConfig, split='test', view_type: str 
     score_dict_by_name, gaussian_outputs = evaluate(opt, model, cfg, evaluator, dair_info, split, view_type=view_type,
                                   device=device, save_vis=save_result, return_GS=return_GS)
     print(json.dumps(score_dict_by_name, indent=4))
-    if cfg.dataset.name=="re10k":
-        with open("metrics_{}_{}_{}.json".format(cfg.dataset.name, split, cfg.dataset.test_split), "w") as f:
-            json.dump(score_dict_by_name, f, indent=4)
+    # if cfg.dataset.name=="re10k":
+    #     with open("metrics_{}_{}_{}.json".format(cfg.dataset.name, split, cfg.dataset.test_split), "w") as f:
+    #         json.dump(score_dict_by_name, f, indent=4)
     with open("metrics_{}_{}.json".format(cfg.dataset.name, split), "w") as f:
         json.dump(score_dict_by_name, f, indent=4)
 
