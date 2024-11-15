@@ -23,8 +23,8 @@ path_list = [
     './debug/side-pred-0/view.jpg',
     './debug/side-pred-1/view.jpg',
 
-    '../dair-test/weights/flash3d/gt',
-    '../dair-test/weights/flash3d/pred'
+    '../dair-test/weights/flash3d/knowing-inf', # [6]
+    '../dair-test/weights/flash3d/knowing-veh' # [7]
 ]
 
 
@@ -64,16 +64,30 @@ def load_image():
         Image.open(os.path.join(path_list[3], 'colored_pred_all.jpg')), \
         Image.open(os.path.join(path_list[3], 'pred.jpg'))
 
-    flash3d_gt_f_0, flash3d_gt_f_s0 = Image.open(os.path.join(path_list[6], '000.png')), \
-        Image.open(os.path.join(path_list[6], 's00.png'))
-    flash3d_pred_f_0, flash3d_pred_f_s0 = Image.open(os.path.join(path_list[7], '000.png')), \
-        Image.open(os.path.join(path_list[7], 's00.png'))
+    flash3d_gt_knowing_inf, flash3d_gt_knowing_veh = Image.open(os.path.join(path_list[6], 'gt/000.png')), \
+        Image.open(os.path.join(path_list[7], 'gt/s00.png')) # knowing-inf/knowing-veh下的ground truth
+    # knowing inf
+    knowing_inf_flash3d_pred_ori_side, knowing_inf_flash3d_pred_ori_side_depth, knowing_inf_flash3d_pred_anti_side, knowing_inf_flash3d_pred_anti_side_depth = \
+        Image.open(os.path.join(path_list[6], 'pred/000-side.png')), Image.open(
+            os.path.join(path_list[6], 'pred/000-side-depth.png')), \
+            Image.open(os.path.join(path_list[6]), 'pred/s00-side.png'), Image.open(os.path.join(path_list[6]),
+                                                                                    'pred/s00-side-depth.png')
+    # knowing veh
+    knowing_veh_flash3d_pred_ori_side, knowing_veh_flash3d_pred_ori_side_depth, knowing_veh_flash3d_pred_anti_side, knowing_veh_flash3d_pred_anti_side_depth = \
+        Image.open(os.path.join(path_list[7], 'pred/000-side.png')), Image.open(os.path.join(path_list[7], 'pred/000-side-depth.png')), \
+            Image.open(os.path.join(path_list[7]), 'pred/s00-side.png'), Image.open(os.path.join(path_list[7]), 'pred/s00-side-depth.png')
 
     side_view_1, side_view_2 = Image.open(path_list[4]), Image.open(path_list[5])
 
     return (rgb1, mask1, dep_1_1, dep_1_2, dep_1_3, rgb2, mask2, \
                 dep_2_1, dep_2_2, dep_2_3, side_view_1, side_view_2,\
-            flash3d_gt_f_0, flash3d_gt_f_s0, flash3d_pred_f_0, flash3d_pred_f_s0)
+            flash3d_gt_knowing_inf, \
+            knowing_inf_flash3d_pred_ori_side, knowing_inf_flash3d_pred_ori_side_depth, \
+            knowing_inf_flash3d_pred_anti_side, knowing_inf_flash3d_pred_anti_side_depth, \
+            flash3d_gt_knowing_veh, \
+            knowing_veh_flash3d_pred_ori_side, knowing_veh_flash3d_pred_ori_side_depth, \
+            knowing_veh_flash3d_pred_anti_side, knowing_veh_flash3d_pred_anti_side_depth
+        )
 
 def main():
     with gr.Blocks() as demo:
@@ -99,12 +113,20 @@ def main():
             side_view_2 = gr.Image(label=path_list[5])
 
         with gr.Row():
-            flash3d_gt_f_0, flash3d_pred_f_0 = gr.Image(label=os.path.join(path_list[6], '000.png')), \
-                gr.Image(label=os.path.join(path_list[7], '000.png'))
+            knowing_inf_gt = gr.Image(label='input: inf-side & inf-camera-pose')
+        with gr.Row():
+            knowing_inf_pred_ori_side, knowing_inf_pred_ori_side_depth = \
+                gr.Image(label='Given inf: [inf]2[inf]'), gr.Image(label='Given inf: [inf]2[inf-depth]')
+            knowing_inf_pred_anti_side, knowing_inf_pred_anti_side_depth = \
+                gr.Image(label='Given inf: [inf]2[veh]'), gr.Image(label='Given inf: [inf]2[veh-depth]')
 
         with gr.Row():
-            flash3d_gt_f_s0, flash3d_pred_f_s0 = gr.Image(label=os.path.join(path_list[6], 's00.png')), \
-                gr.Image(label=os.path.join(path_list[7], 's00.png'))
+            knowing_veh_gt = gr.Image(label='input: veh-side & veh-camera-pose')
+        with gr.Row():
+            knowing_veh_pred_ori_side, knowing_veh_pred_ori_side_depth = \
+                gr.Image(label='Given inf: [veh]2[veh]'), gr.Image(label='Given inf: [veh]2[veh-depth]')
+            knowing_veh_pred_anti_side, knowing_veh_pred_anti_side_depth = \
+                gr.Image(label='Given inf: [veh]2[inf]'), gr.Image(label='Given inf: [veh]2[inf-depth]')
 
         button.click(fn=load_image,
                      inputs=[],
@@ -112,7 +134,10 @@ def main():
                          rgb1, mask1, dep_1_1, dep_1_2, dep_1_3,
                          rgb2, mask2, dep_2_1, dep_2_2, dep_2_3,
                          side_view_1, side_view_2,
-                         flash3d_gt_f_0, flash3d_gt_f_s0, flash3d_pred_f_0, flash3d_pred_f_s0
+                         knowing_inf_gt,
+                         knowing_inf_pred_ori_side, knowing_inf_pred_ori_side_depth, knowing_inf_pred_anti_side, knowing_inf_pred_anti_side_depth,
+                         knowing_veh_gt,
+                         knowing_veh_pred_ori_side, knowing_veh_pred_ori_side_depth, knowing_veh_pred_anti_side, knowing_veh_pred_anti_side_depth
                      ])
 
     # 启动 Gradio 界面

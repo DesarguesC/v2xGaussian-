@@ -54,6 +54,8 @@ def get_model_instance(model):
 
 def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf', device=None, save_vis=False, return_GS=False):
     out_base_dir = os.path.join(opt.save_dir, 'flash3d')
+    if not os.path.exists(out_base_dir): os.mkdir(out_base_dir)
+    out_base_dir = os.path.join(out_base_dir, f'knowing-{view_type}')
 
     out_dir_ply, out_pred_dir = os.path.join(out_base_dir, 'ply'), os.path.join(out_base_dir, 'pred') # create via opt
     out_gt_dir = os.path.join(out_base_dir, 'gt') # create via opt
@@ -77,7 +79,7 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
         inputs_item = inputs.getInputs(device)
         inputs_item["target_frame_ids"] = target_frame_ids
         outputs = model(inputs_item) # dict ->
-    # pdb.set_trace()
+    pdb.set_trace()
     for f_id in score_dict.keys(): # score_dict.keys() = ['s0'] | 再看下'0'的
         pred = outputs[('color_gauss', f_id, 0)] # another_view -> [1, 3, H, W]
         pred_depth = outputs[('depth_gauss', f_id, 0)] # -> [1, 1, H, W]
@@ -94,27 +96,27 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
             pred = pred[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
             pred_depth = colorize(pred_depth)
             gt = gt[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
-            plt.imsave(f"{out_pred_dir}/{f_id:03}.png", pred)
-            plt.imsave(f"{out_pred_dir}/{f_id:03}-depth.png", pred_depth)
+            plt.imsave(f"{out_pred_dir}/{f_id:03}-side.png", pred)
+            plt.imsave(f"{out_pred_dir}/{f_id:03}-side-depth.png", pred_depth)
             plt.imsave(f"{out_gt_dir}/{f_id:03}.png", gt)
 
         for metric_name, v in out.items():
             score_dict[f_id][metric_name].append(v)
 
-    f_id = 0
-    pred = outputs[('color_gauss', f_id, 0)]  # another_view
-    pred_depth = outputs[('depth_gauss', f_id, 0)]
-    if cfg.dataset.name == "dtu":
-        gt = inputs_item[('color_orig_res', f_id, 0)]
-        pred = TF.resize(pred, gt.shape[-2:])
-    else:
-        gt = inputs_item[('color', f_id, 0)]
-    if save_vis:
-        pred = pred[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
-        pred_depth = colorize(pred_depth)
-        gt = gt[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
-        plt.imsave(f"{out_pred_dir}/{f_id:03}_ori_view.png", pred)
-        plt.imsave(f"{out_pred_dir}/{f_id:03}_ori_view-depth.png", pred_depth)
+    # pdb.set_trace()
+    # f_id = 0
+    # pred = outputs[('color_gauss', f_id, 0)]  # another_view
+    # pred_depth = outputs[('depth_gauss', f_id, 0)]
+    # if cfg.dataset.name == "dtu":
+    #     gt = inputs_item[('color_orig_res', f_id, 0)]
+    #     pred = TF.resize(pred, gt.shape[-2:])
+    # else:
+    #     gt = inputs_item[('color', f_id, 0)]
+    # if save_vis:
+    #     pred = pred[0].clip(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy()
+    #     pred_depth = colorize(pred_depth)
+    #     plt.imsave(f"{out_pred_dir}/{f_id:03}-ori-side.png", pred)
+    #     plt.imsave(f"{out_pred_dir}/{f_id:03}-ori-side-depth.png", pred_depth)
 
 
 
