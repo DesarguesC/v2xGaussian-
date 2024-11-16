@@ -65,17 +65,16 @@ def load_image():
         Image.open(os.path.join(path_list[3], 'pred.jpg'))
 
     flash3d_gt_knowing_inf, flash3d_gt_knowing_veh = Image.open(os.path.join(path_list[6], 'gt/000.png')), \
-        Image.open(os.path.join(path_list[7], 'gt/s00.png')) # knowing-inf/knowing-veh下的ground truth
+        Image.open(os.path.join(path_list[7], 'gt/000.png')) # knowing-inf/knowing-veh下的ground truth
     # knowing inf
     knowing_inf_flash3d_pred_ori_side, knowing_inf_flash3d_pred_ori_side_depth, knowing_inf_flash3d_pred_anti_side, knowing_inf_flash3d_pred_anti_side_depth = \
         Image.open(os.path.join(path_list[6], 'pred/000-side.png')), Image.open(
             os.path.join(path_list[6], 'pred/000-side-depth.png')), \
-            Image.open(os.path.join(path_list[6]), 'pred/s00-side.png'), Image.open(os.path.join(path_list[6]),
-                                                                                    'pred/s00-side-depth.png')
+            Image.open(os.path.join(path_list[6], 'pred/s00-side.png')), Image.open(os.path.join(path_list[6], 'pred/s00-side-depth.png'))
     # knowing veh
     knowing_veh_flash3d_pred_ori_side, knowing_veh_flash3d_pred_ori_side_depth, knowing_veh_flash3d_pred_anti_side, knowing_veh_flash3d_pred_anti_side_depth = \
         Image.open(os.path.join(path_list[7], 'pred/000-side.png')), Image.open(os.path.join(path_list[7], 'pred/000-side-depth.png')), \
-            Image.open(os.path.join(path_list[7]), 'pred/s00-side.png'), Image.open(os.path.join(path_list[7]), 'pred/s00-side-depth.png')
+            Image.open(os.path.join(path_list[7], 'pred/s00-side.png')), Image.open(os.path.join(path_list[7], 'pred/s00-side-depth.png'))
 
     side_view_1, side_view_2 = Image.open(path_list[4]), Image.open(path_list[5])
 
