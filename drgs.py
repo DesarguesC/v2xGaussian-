@@ -436,6 +436,9 @@ def train_DRGS(
                 fg_mask = rearrange(torch.tensor(train_now['mask']), 'h w c -> c h w').requires_grad_(False).cuda()
                 with torch.no_grad():
                     bg_mask = 1. - fg_mask
+                tmp_shape = train_now['depth']['panoptic'][-1].shape
+                if len(tmp_shape) < 3:
+                    train_now['depth']['panoptic'][-1] = train_now['depth']['panoptic'][-1][:,:,None]
                 dep = rearrange(torch.tensor(train_now['depth']['panoptic'][-1]), 'h w c -> c h w').requires_grad_(False).cuda() # panoptic, uncolored
                 viewer_depth = torch.tensor(train_now['view']).requires_grad_(False).cuda() # TODO: 先更新viewer_depth, 叠加上另一个gs渲染出的深度
                 foc = train_now['foc']

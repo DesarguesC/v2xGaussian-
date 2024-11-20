@@ -79,8 +79,9 @@ def evaluate(opt, model, cfg, evaluator, dair_info, split='test', view_type='inf
         inputs_item = inputs.getInputs(device)
         inputs_item["target_frame_ids"] = target_frame_ids
         outputs = model(inputs_item) # dict ->
-    pdb.set_trace()
-    for f_id in score_dict.keys(): # score_dict.keys() = ['s0'] | 再看下'0'的
+    # pdb.set_trace()
+    for f_id in score_dict.keys():
+        # score_dict.keys(): ["s0", 0]
         pred = outputs[('color_gauss', f_id, 0)] # another_view -> [1, 3, H, W]
         pred_depth = outputs[('depth_gauss', f_id, 0)] # -> [1, 1, H, W]
         if cfg.dataset.name == "dtu":
@@ -162,6 +163,7 @@ def v2x_inference(opt, dair_info, cfg: DictConfig, split='test', view_type: str 
 
     device = torch.device("cuda:0")
     model.to(device)
+    # pdb.set_trace()
     if (ckpt_dir := model.checkpoint_dir()).exists():
         # resume training
         model.load_model(ckpt_dir, ckpt_ids=0)
