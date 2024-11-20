@@ -113,7 +113,7 @@ def main():
 
         with gr.Row():
             knowing_inf_gt = gr.Image(label='input: inf-side & inf-camera-pose')
-        with gr.Row():
+        # with gr.Row():
             knowing_inf_pred_ori_side, knowing_inf_pred_ori_side_depth = \
                 gr.Image(label='Given inf: [inf]2[inf]'), gr.Image(label='Given inf: [inf]2[inf-depth]')
             knowing_inf_pred_anti_side, knowing_inf_pred_anti_side_depth = \
@@ -121,7 +121,7 @@ def main():
 
         with gr.Row():
             knowing_veh_gt = gr.Image(label='input: veh-side & veh-camera-pose')
-        with gr.Row():
+        # with gr.Row():
             knowing_veh_pred_ori_side, knowing_veh_pred_ori_side_depth = \
                 gr.Image(label='Given inf: [veh]2[veh]'), gr.Image(label='Given inf: [veh]2[veh-depth]')
             knowing_veh_pred_anti_side, knowing_veh_pred_anti_side_depth = \
